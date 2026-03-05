@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1565C0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CarWash" />
+  <title>Car Wash Manager</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ================================================
+     LOGIN SCREEN
+     ================================================ -->
+<div id="login-screen">
+  <div class="auth-card">
+    <div class="auth-logo">🚗💧</div>
+    <h1 class="auth-title">Car Wash Manager</h1>
+    <p class="auth-subtitle">Sign in to manage your customer records</p>
+
+    <button class="google-btn" onclick="AUTH.signIn()">
+      <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Sign in with Google
+    </button>
+
+    <p class="auth-note">Your data is saved in your own Google Sheet.<br/>Nothing is stored on any outside server.</p>
+  </div>
+</div>
+
+<!-- ================================================
+     FIRST-TIME SETUP SCREEN
+     ================================================ -->
+<div id="setup-screen" hidden>
+  <div class="auth-card">
+    <div class="auth-logo">🎉</div>
+    <h2 class="auth-title">Almost Done!</h2>
+    <p class="auth-subtitle">Set up your business profile</p>
+
+    <form id="setup-form">
+      <div class="form-group">
+        <label for="setup-business">Business / Shop Name <span class="required">*</span></label>
+        <input type="text" id="setup-business" placeholder="e.g. Rahul's Car Wash" required />
+      </div>
+      <div class="form-group">
+        <label for="setup-owner">Owner Name <span class="required">*</span></label>
+        <input type="text" id="setup-owner" placeholder="Your full name" required />
+      </div>
+      <div class="form-group">
+        <label for="setup-phone">Your Mobile Number</label>
+        <input type="tel" id="setup-phone" placeholder="10-digit number (optional)" maxlength="10" />
+      </div>
+      <button type="submit" class="btn-primary">Get Started &#x1F680;</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================================================
+     MAIN APP
+     ================================================ -->
+<div id="app" hidden>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <button class="back-btn" id="back-btn" onclick="goBack()">&#8592;</button>
+    <div class="header-center">
+      <span id="header-text">Car Wash Manager</span>
+    </div>
+    <div class="header-right">
+      <img id="user-avatar" class="user-avatar" src="" alt="" />
+      <button class="logout-btn" onclick="AUTH.signOut()" title="Logout">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="app-main">
+
+    <!-- HOME PAGE -->
+    <section id="page-home" class="page active">
+      <div class="hero-section">
+        <div class="hero-logo">🚗💧</div>
+        <h2 class="hero-title" id="business-name-display">Car Wash Manager</h2>
+        <p class="hero-subtitle" id="user-greeting">Welcome!</p>
+      </div>
+
+      <div class="action-grid">
+        <button class="action-card" onclick="showPage('new-entry', 'New Entry')">
+          <div class="action-icon new-entry-icon">&#x2795;</div>
+          <div class="action-label">New Entry</div>
+          <div class="action-desc">Record a customer visit</div>
+        </button>
+        <button class="action-card" onclick="showPage('search', 'Search Customer')">
+          <div class="action-icon search-icon">&#x1F50D;</div>
+          <div class="action-label">Search</div>
+          <div class="action-desc">View customer history</div>
+        </button>
+      </div>
+
+      <!-- User info strip -->
+      <div class="user-strip" id="user-strip">
+        <img id="strip-avatar" class="strip-avatar" src="" alt="" />
+        <div class="strip-info">
+          <div class="strip-name" id="strip-name"></div>
+          <div class="strip-email" id="strip-email"></div>
+        </div>
+        <button class="strip-logout" onclick="AUTH.signOut()">Sign Out</button>
+      </div>
+    </section>
+
+    <!-- NEW ENTRY PAGE -->
+    <section id="page-new-entry" class="page">
+      <form id="entry-form" autocomplete="off">
+
+        <div class="form-section-title">Customer Info</div>
+        <div class="form-group">
+          <label for="customerName">Customer Name <span class="required">*</span></label>
+          <input type="text" id="customerName" placeholder="e.g. Rajesh Kumar" required />
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number <span class="required">*</span></label>
+          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" required />
+        </div>
+
+        <div class="form-section-title">Vehicle Info</div>
+        <div class="form-group">
+          <label for="vehicleNumber">Vehicle Number <span class="required">*</span></label>
+          <input type="text" id="vehicleNumber" placeholder="e.g. KA01AB1234" class="uppercase" required />
+        </div>
+        <div class="form-group">
+          <label for="vehicleModel">Vehicle Model</label>
+          <input type="text" id="vehicleModel" placeholder="e.g. Maruti Swift, Honda City" />
+        </div>
+
+        <div class="form-section-title">Service Info</div>
+        <div class="form-group">
+          <label for="serviceType">Service Type <span class="required">*</span></label>
+          <select id="serviceType" required>
+            <option value="">-- Select Service --</option>
+            <option value="Exterior Wash">Exterior Wash</option>
+            <option value="Interior Wash">Interior Wash</option>
+            <option value="Full Wash (Interior + Exterior)">Full Wash (Interior + Exterior)</option>
+            <option value="Foam Wash">Foam Wash</option>
+            <option value="Pressure Wash">Pressure Wash</option>
+            <option value="Waxing &amp; Polish">Waxing &amp; Polish</option>
+            <option value="Vacuum Cleaning">Vacuum Cleaning</option>
+            <option value="Full Detailing">Full Detailing</option>
+            <option value="Engine Wash">Engine Wash</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="amount">Amount (&#x20B9;) <span class="required">*</span></label>
+          <input type="number" id="amount" placeholder="e.g. 300" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="staffName">Staff Name</label>
+          <input type="text" id="staffName" placeholder="Who serviced this vehicle" />
+        </div>
+        <div class="form-group">
+          <label for="notes">Notes / Remarks</label>
+          <textarea id="notes" placeholder="Any special notes about this visit..." rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">
+          <span id="submit-text">&#x1F4BE; Save Entry</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- SEARCH PAGE -->
+    <section id="page-search" class="page">
+      <div class="search-container">
+        <div class="search-toggle">
+          <button class="toggle-btn active" id="toggle-phone" onclick="setSearchType('phone', this)">
+            &#x1F4F1; By Phone
+          </button>
+          <button class="toggle-btn" id="toggle-vehicle" onclick="setSearchType('vehicle', this)">
+            &#x1F697; By Vehicle No.
+          </button>
+        </div>
+        <div class="search-input-row">
+          <input type="tel" id="searchQuery" class="search-input" placeholder="Enter phone number..." maxlength="10" />
+          <button class="search-btn" onclick="doSearch()">&#x1F50D;</button>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showPage('home', 'Car Wash Manager')">
+      <span class="nav-icon">&#x1F3E0;</span>
+      <span class="nav-label">Home</span>
+    </button>
+    <button class="nav-btn" id="nav-new-entry" onclick="showPage('new-entry', 'New Entry')">
+      <span class="nav-icon">&#x2795;</span>
+      <span class="nav-label">New Entry</span>
+    </button>
+    <button class="nav-btn" id="nav-search" onclick="showPage('search', 'Search Customer')">
+      <span class="nav-icon">&#x1F50D;</span>
+      <span class="nav-label">Search</span>
+    </button>
+  </nav>
+
+</div><!-- end #app -->
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="toast"></div>
+
+<!-- LOADING OVERLAY -->
+<div id="loading" class="loading-overlay" hidden>
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <p id="loading-text">Please wait...</p>
+  </div>
+</div>
+
+<!-- Google Identity Services (loads async, triggers onGoogleLibraryLoad when ready) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/sheets.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
