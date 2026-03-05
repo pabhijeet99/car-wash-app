@@ -3,9 +3,9 @@
   "dir": "ltr",
   "display": "standalone",
   "name": "CarWash",
-  "orientation": "any",
-  "scope": "/",
+  "orientation": "Portrait",
+  "scope": "/car-wash-app/",
   "short_name": "CarWash",
-  "start_url": "/",
+  "start_url": "/car-wash-app/index.html",
   "theme_color": "#1565C0"
 }
