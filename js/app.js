@@ -1,9 +1,6 @@
 // =============================================
 // CAR WASH MANAGER — App Logic
-// =============================================
-// Load order: sheets.js → auth.js → app.js
-// Global utility functions defined here are
-// available to auth.js and sheets.js at runtime.
+// APK-friendly: No external libraries
 // =============================================
 
 // =============================================
@@ -29,14 +26,54 @@ function hideLoading() {
   document.getElementById('loading').setAttribute('hidden', '');
 }
 
-/**
- * Switch between screens: 'login' | 'setup' | 'app'
- */
 function showScreen(name) {
-  document.getElementById('login-screen').hidden = (name !== 'login');
-  document.getElementById('setup-screen').hidden = (name !== 'setup');
+  document.getElementById('screen-setup').hidden = (name !== 'setup');
+  document.getElementById('screen-login').hidden = (name !== 'login');
   document.getElementById('app').hidden           = (name !== 'app');
 }
+
+// =============================================
+// SETUP WIZARD NAVIGATION
+// =============================================
+function goSetupStep(step) {
+  document.querySelectorAll('.setup-step').forEach(el => el.hidden = true);
+  document.getElementById('setup-step-' + step).hidden = false;
+}
+
+// Setup Step 1: Business Info
+document.getElementById('setup-form-1').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const business = document.getElementById('s-business').value.trim();
+  const owner    = document.getElementById('s-owner').value.trim();
+  const phone    = document.getElementById('s-phone').value.trim();
+
+  if (phone && !/^\d{10}$/.test(phone)) {
+    showToast('Enter a valid 10-digit mobile number', 'error');
+    return;
+  }
+
+  AUTH.saveProfile({ businessName: business, ownerName: owner, phone });
+  goSetupStep(2);
+});
+
+// Setup Step 2: Apps Script URL
+document.getElementById('setup-form-2').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const url = document.getElementById('s-url').value.trim();
+
+  if (!url.includes('script.google.com')) {
+    showToast('Please enter a valid Apps Script URL', 'error');
+    return;
+  }
+
+  AUTH.saveApiUrl(url);
+  // Reset PIN UI
+  PINUI.setupPhase    = 'set';
+  PINUI.setupFirstPin = '';
+  PINUI.clearDots('setup');
+  document.getElementById('setup-pin-hint').textContent = 'Enter a 4-digit PIN';
+  goSetupStep(3);
+});
 
 // =============================================
 // NAVIGATION
@@ -54,7 +91,6 @@ function showPage(pageName, title) {
 
   document.getElementById('header-text').textContent = title || 'Car Wash Manager';
 
-  // Back button: only show on sub-pages
   const backBtn = document.getElementById('back-btn');
   if (pageName === 'home') {
     backBtn.classList.remove('visible');
@@ -64,10 +100,67 @@ function showPage(pageName, title) {
 
   currentPage = pageName;
   document.querySelector('.app-main').scrollTop = 0;
+
+  // Populate settings when opening
+  if (pageName === 'settings') populateSettings();
 }
 
 function goBack() {
   showPage('home', 'Car Wash Manager');
+}
+
+// =============================================
+// MAIN APP CONTROLLER
+// =============================================
+const APP = {
+  start(profile) {
+    if (!profile) profile = { businessName: 'Car Wash Manager', ownerName: '' };
+
+    document.getElementById('business-name-display').textContent = profile.businessName;
+    document.getElementById('user-greeting').textContent = 'Welcome, ' + (profile.ownerName || 'Owner') + '! 👋';
+    document.getElementById('strip-info').textContent    = profile.businessName;
+
+    showScreen('app');
+    showPage('home', 'Car Wash Manager');
+  }
+};
+
+// =============================================
+// SETTINGS PAGE
+// =============================================
+function populateSettings() {
+  const profile = AUTH.getProfile() || {};
+  document.getElementById('set-business').value = profile.businessName || '';
+  document.getElementById('set-owner').value    = profile.ownerName    || '';
+  document.getElementById('set-phone').value    = profile.phone        || '';
+  document.getElementById('set-url').value      = AUTH.getApiUrl()     || '';
+}
+
+function saveSettings() {
+  const business = document.getElementById('set-business').value.trim();
+  const owner    = document.getElementById('set-owner').value.trim();
+  const phone    = document.getElementById('set-phone').value.trim();
+  const url      = document.getElementById('set-url').value.trim();
+
+  if (!business) { showToast('Business name is required', 'error'); return; }
+
+  AUTH.saveProfile({ businessName: business, ownerName: owner, phone });
+  if (url) AUTH.saveApiUrl(url);
+
+  document.getElementById('business-name-display').textContent = business;
+  document.getElementById('strip-info').textContent            = business;
+
+  showToast('✅ Settings saved!', 'success');
+}
+
+function changePin() {
+  // Reset PIN setup
+  PINUI.setupPhase    = 'set';
+  PINUI.setupFirstPin = '';
+  PINUI.clearDots('setup');
+  document.getElementById('setup-pin-hint').textContent = 'Enter your new 4-digit PIN';
+  goSetupStep(3);
+  showScreen('setup');
 }
 
 // =============================================
@@ -94,67 +187,6 @@ function setSearchType(type, btn) {
 }
 
 // =============================================
-// MAIN APP CONTROLLER
-// =============================================
-const APP = {
-  user:    null,
-  profile: null,
-
-  /** Called after successful login + sheet init */
-  start(user, profile) {
-    APP.user    = user;
-    APP.profile = profile;
-
-    // Populate header
-    document.getElementById('business-name-display').textContent = profile.businessName;
-    document.getElementById('user-greeting').textContent = 'Welcome, ' + user.name.split(' ')[0] + '! 👋';
-
-    // User avatar
-    const avatars = document.querySelectorAll('.user-avatar, .strip-avatar');
-    avatars.forEach(img => {
-      if (user.picture) {
-        img.src = user.picture;
-        img.style.display = 'block';
-      }
-    });
-
-    // User strip info
-    document.getElementById('strip-name').textContent  = user.name;
-    document.getElementById('strip-email').textContent = user.email;
-
-    showScreen('app');
-    showPage('home', 'Car Wash Manager');
-  }
-};
-
-// =============================================
-// FIRST-TIME SETUP FORM
-// =============================================
-document.getElementById('setup-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-
-  const businessName = document.getElementById('setup-business').value.trim();
-  const ownerName    = document.getElementById('setup-owner').value.trim();
-  const phone        = document.getElementById('setup-phone').value.trim();
-
-  if (!businessName || !ownerName) {
-    showToast('Please fill in all required fields', 'error');
-    return;
-  }
-
-  if (phone && !/^\d{10}$/.test(phone)) {
-    showToast('Enter a valid 10-digit mobile number', 'error');
-    return;
-  }
-
-  const profile = { businessName, ownerName, phone };
-  localStorage.setItem('cw_profile_' + AUTH.user.email, JSON.stringify(profile));
-
-  APP.start(AUTH.user, profile);
-  showToast('Profile saved! Welcome to Car Wash Manager 🎉', 'success');
-});
-
-// =============================================
 // NEW ENTRY FORM
 // =============================================
 document.getElementById('entry-form').addEventListener('submit', async function(e) {
@@ -163,7 +195,6 @@ document.getElementById('entry-form').addEventListener('submit', async function(
   const phone = document.getElementById('phone').value.trim();
   if (!/^\d{10}$/.test(phone)) {
     showToast('Please enter a valid 10-digit phone number', 'error');
-    document.getElementById('phone').focus();
     return;
   }
 
@@ -171,6 +202,7 @@ document.getElementById('entry-form').addEventListener('submit', async function(
   const submitText = document.getElementById('submit-text');
   submitBtn.disabled = true;
   submitText.textContent = '⏳ Saving...';
+  showLoading('Saving to Google Sheet...');
 
   const record = {
     customerName:  document.getElementById('customerName').value.trim(),
@@ -185,11 +217,13 @@ document.getElementById('entry-form').addEventListener('submit', async function(
 
   try {
     await SHEETS.addRecord(record);
+    hideLoading();
     showToast('✅ Entry saved to Google Sheet!', 'success');
     e.target.reset();
     showPage('home', 'Car Wash Manager');
   } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
+    hideLoading();
+    showToast('❌ ' + err.message, 'error');
     console.error('Save error:', err);
   } finally {
     submitBtn.disabled = false;
@@ -202,46 +236,35 @@ document.getElementById('entry-form').addEventListener('submit', async function(
 // =============================================
 async function doSearch() {
   const query = document.getElementById('searchQuery').value.trim();
-
-  if (!query) {
-    showToast('Please enter a search term', 'error');
-    return;
-  }
+  if (!query) { showToast('Please enter a search term', 'error'); return; }
 
   if (searchType === 'phone' && !/^\d{7,10}$/.test(query)) {
-    showToast('Enter at least 7 digits of the phone number', 'error');
+    showToast('Enter at least 7 digits of phone number', 'error');
     return;
   }
 
   const resultsDiv = document.getElementById('search-results');
-  resultsDiv.innerHTML =
-    '<div class="inline-loading"><div class="spinner" style="margin:0 auto 14px"></div>Searching records...</div>';
+  resultsDiv.innerHTML = '<div class="inline-loading"><div class="spinner" style="margin:0 auto 14px"></div>Searching...</div>';
 
   try {
     const results = await SHEETS.search(query, searchType);
-
     if (results.length === 0) {
       resultsDiv.innerHTML = buildNoResults('No records found for "' + query + '"');
       return;
     }
-
-    // Sort newest visit first
     results.sort((a, b) => _parseDate(b.date) - _parseDate(a.date));
     renderResults(results, resultsDiv);
-
   } catch (err) {
     resultsDiv.innerHTML = buildNoResults('Error: ' + err.message);
-    console.error('Search error:', err);
   }
 }
 
-// Enter key triggers search
 document.getElementById('searchQuery').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') doSearch();
 });
 
 // =============================================
-// RENDER SEARCH RESULTS
+// RENDER RESULTS
 // =============================================
 function renderResults(visits, container) {
   const first       = visits[0];
@@ -255,41 +278,24 @@ function renderResults(visits, container) {
         <span>📱 ${esc(first.phone)}</span>
         <span class="visit-badge">${visits.length} Visit${visits.length !== 1 ? 's' : ''}</span>
       </div>
-      ${vehicles.length
-        ? `<div class="customer-meta" style="margin-top:8px">
-             ${vehicles.map(v => `<span>🚗 ${esc(v)}</span>`).join('')}
-           </div>`
-        : ''}
+      ${vehicles.length ? `<div class="customer-meta" style="margin-top:8px">${vehicles.map(v => `<span>🚗 ${esc(v)}</span>`).join('')}</div>` : ''}
       <div class="customer-meta" style="margin-top:8px">
         <span>💰 Total Spent: ₹${totalAmount.toLocaleString('en-IN')}</span>
       </div>
     </div>
     <div class="section-label">Visit History (${visits.length})</div>`;
 
-  visits.forEach(visit => {
+  visits.forEach(v => {
     html += `
       <div class="visit-card">
         <div class="visit-top-row">
-          <span class="visit-date">📅 ${esc(visit.date)}</span>
-          <span class="visit-amount">₹${esc(visit.amount)}</span>
+          <span class="visit-date">📅 ${esc(v.date)}</span>
+          <span class="visit-amount">₹${esc(v.amount)}</span>
         </div>
-        ${visit.vehicleNumber
-          ? `<div class="visit-info-row">
-               <span class="info-icon">🚗</span>
-               <span>${esc(visit.vehicleNumber)}${visit.vehicleModel ? ` (${esc(visit.vehicleModel)})` : ''}</span>
-             </div>` : ''}
-        ${visit.serviceType
-          ? `<div class="visit-info-row">
-               <span class="info-icon">🧹</span>
-               <span>${esc(visit.serviceType)}</span>
-             </div>` : ''}
-        ${visit.staffName
-          ? `<div class="visit-info-row">
-               <span class="info-icon">👷</span>
-               <span>${esc(visit.staffName)}</span>
-             </div>` : ''}
-        ${visit.notes
-          ? `<div class="visit-notes">📝 ${esc(visit.notes)}</div>` : ''}
+        ${v.vehicleNumber ? `<div class="visit-info-row"><span class="info-icon">🚗</span><span>${esc(v.vehicleNumber)}${v.vehicleModel ? ` (${esc(v.vehicleModel)})` : ''}</span></div>` : ''}
+        ${v.serviceType   ? `<div class="visit-info-row"><span class="info-icon">🧹</span><span>${esc(v.serviceType)}</span></div>` : ''}
+        ${v.staffName     ? `<div class="visit-info-row"><span class="info-icon">👷</span><span>${esc(v.staffName)}</span></div>` : ''}
+        ${v.notes         ? `<div class="visit-notes">📝 ${esc(v.notes)}</div>` : ''}
       </div>`;
   });
 
@@ -297,10 +303,7 @@ function renderResults(visits, container) {
 }
 
 function buildNoResults(msg) {
-  return `<div class="no-results">
-    <div class="no-results-icon">🔍</div>
-    <p>${esc(msg)}</p>
-  </div>`;
+  return `<div class="no-results"><div class="no-results-icon">🔍</div><p>${esc(msg)}</p></div>`;
 }
 
 // =============================================
@@ -308,33 +311,24 @@ function buildNoResults(msg) {
 // =============================================
 function esc(str) {
   if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function _parseDate(str) {
   if (!str) return 0;
-  // en-IN format: "dd/MM/yyyy hh:mm am" or "dd-MM-yyyy HH:mm"
-  let m = str.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})[,\s]+(\d{2}):(\d{2})/i);
-  if (m) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime();
+  const m = str.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
   return new Date(str).getTime() || 0;
 }
 
-// Auto-uppercase for vehicle number input
+// Auto-uppercase vehicle number
 document.getElementById('vehicleNumber').addEventListener('input', function() {
-  const pos   = this.selectionStart;
-  this.value  = this.value.toUpperCase();
+  const pos = this.selectionStart;
+  this.value = this.value.toUpperCase();
   this.setSelectionRange(pos, pos);
 });
 
-// =============================================
-// SERVICE WORKER (offline support)
-// =============================================
+// Service worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(err => {
-    console.log('SW registration failed:', err);
-  });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
