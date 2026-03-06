@@ -1,15 +1,17 @@
 // =============================================
 // CAR WASH MANAGER — PIN Authentication
-// No OAuth / No Google Sign-In
+// + Auto-registration with Google Sheet creation
 // Works perfectly in Android APK WebView
 // =============================================
 
 const AUTH = {
 
   isSetupDone() {
-    return !!(localStorage.getItem('cw_pin') &&
-              localStorage.getItem('cw_profile') &&
-              localStorage.getItem('cw_api_url'));
+    return !!(
+      localStorage.getItem('cw_pin') &&
+      localStorage.getItem('cw_profile') &&
+      localStorage.getItem('cw_sheet_id')
+    );
   },
 
   isLoggedIn() {
@@ -23,14 +25,6 @@ const AUTH = {
 
   saveProfile(profile) {
     localStorage.setItem('cw_profile', JSON.stringify(profile));
-  },
-
-  saveApiUrl(url) {
-    localStorage.setItem('cw_api_url', url.trim());
-  },
-
-  getApiUrl() {
-    return localStorage.getItem('cw_api_url') || '';
   },
 
   savePin(pin) {
@@ -49,12 +43,6 @@ const AUTH = {
     sessionStorage.removeItem('cw_session');
     showScreen('login');
     showToast('App locked', 'info');
-  },
-
-  resetAll() {
-    localStorage.clear();
-    sessionStorage.clear();
-    location.reload();
   }
 };
 
@@ -62,15 +50,14 @@ const AUTH = {
 // PIN UI CONTROLLER
 // =============================================
 const PINUI = {
-  values: { setup: '', login: '' },
-  setupPhase: 'set',     // 'set' or 'confirm'
+  values:       { setup: '', login: '' },
+  setupPhase:   'set',
   setupFirstPin: '',
 
   press(mode, digit) {
     if (this.values[mode].length >= 4) return;
     this.values[mode] += digit;
     this.updateDots(mode);
-
     if (this.values[mode].length === 4) {
       setTimeout(() => this.onComplete(mode), 200);
     }
@@ -95,21 +82,15 @@ const PINUI = {
   },
 
   onComplete(mode) {
-    if (mode === 'login') {
-      this.handleLogin();
-    } else {
-      this.handleSetupPin();
-    }
+    if (mode === 'login') this.handleLogin();
+    else this.handleSetupPin();
   },
 
   handleLogin() {
-    const pin = this.values['login'];
-    if (AUTH.verifyPin(pin)) {
+    if (AUTH.verifyPin(this.values['login'])) {
       AUTH.login();
-      const profile = AUTH.getProfile();
-      APP.start(profile);
+      APP.start(AUTH.getProfile());
     } else {
-      // Wrong PIN
       document.getElementById('login-pin-error').textContent = '❌ Wrong PIN. Try again.';
       document.getElementById('screen-login').classList.add('shake');
       setTimeout(() => {
@@ -123,21 +104,15 @@ const PINUI = {
   handleSetupPin() {
     if (this.setupPhase === 'set') {
       this.setupFirstPin = this.values['setup'];
-      this.setupPhase = 'confirm';
+      this.setupPhase    = 'confirm';
       this.clearDots('setup');
       document.getElementById('setup-pin-hint').textContent = '🔁 Confirm your PIN';
     } else {
-      // Confirm phase
       if (this.values['setup'] === this.setupFirstPin) {
-        // PINs match — finish setup
-        AUTH.savePin(this.values['setup']);
-        AUTH.login();
-        const profile = AUTH.getProfile();
-        APP.start(profile);
-        showToast('🎉 Setup complete! Welcome!', 'success');
+        // PINs match — complete setup
+        this._finishSetup(this.values['setup']);
       } else {
-        // Mismatch
-        this.setupPhase = 'set';
+        this.setupPhase    = 'set';
         this.setupFirstPin = '';
         this.clearDots('setup');
         document.getElementById('setup-pin-hint').textContent = '❌ PINs did not match. Try again.';
@@ -146,25 +121,52 @@ const PINUI = {
         }, 2000);
       }
     }
+  },
+
+  async _finishSetup(pin) {
+    const profile = AUTH.getProfile();
+    showLoading('Creating your Google Sheet...');
+
+    try {
+      // AUTO-CREATE Google Sheet for this client
+      const result = await SHEETS.register(profile);
+
+      AUTH.savePin(pin);
+      AUTH.login();
+      hideLoading();
+
+      showToast('🎉 Setup complete! Your Google Sheet is ready!', 'success');
+      APP.start(profile);
+
+    } catch (err) {
+      hideLoading();
+      // If registration fails, allow retry
+      this.setupPhase    = 'set';
+      this.setupFirstPin = '';
+      this.clearDots('setup');
+      document.getElementById('setup-pin-hint').textContent = '❌ ' + err.message;
+      setTimeout(() => {
+        document.getElementById('setup-pin-hint').textContent = 'Enter a 4-digit PIN';
+      }, 3000);
+    }
   }
 };
 
 // =============================================
-// APP INITIALISATION (runs on page load)
+// APP INIT — runs on page load
 // =============================================
-window.addEventListener('DOMContentLoaded', function () {
+window.addEventListener('DOMContentLoaded', function() {
   if (!AUTH.isSetupDone()) {
     showScreen('setup');
     goSetupStep(1);
   } else if (AUTH.isLoggedIn()) {
-    // Session still active (tab not closed)
     APP.start(AUTH.getProfile());
   } else {
-    // Show PIN login
     showScreen('login');
     const profile = AUTH.getProfile();
     if (profile) {
-      document.getElementById('pin-biz-name').textContent = profile.businessName || 'Car Wash Manager';
+      document.getElementById('pin-biz-name').textContent =
+        profile.businessName || 'Car Wash Manager';
     }
   }
 });

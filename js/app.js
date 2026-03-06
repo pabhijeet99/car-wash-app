@@ -56,18 +56,22 @@ document.getElementById('setup-form-1').addEventListener('submit', function(e) {
   goSetupStep(2);
 });
 
-// Setup Step 2: Apps Script URL
+// Setup Step 2: Email
 document.getElementById('setup-form-2').addEventListener('submit', function(e) {
   e.preventDefault();
-  const url = document.getElementById('s-url').value.trim();
+  const email = document.getElementById('s-email').value.trim();
 
-  if (!url.includes('script.google.com')) {
-    showToast('Please enter a valid Apps Script URL', 'error');
+  if (!email || !email.includes('@')) {
+    showToast('Please enter a valid email address', 'error');
     return;
   }
 
-  AUTH.saveApiUrl(url);
-  // Reset PIN UI
+  // Save email into profile
+  const profile = AUTH.getProfile() || {};
+  profile.email = email;
+  AUTH.saveProfile(profile);
+
+  // Reset PIN UI for step 3
   PINUI.setupPhase    = 'set';
   PINUI.setupFirstPin = '';
   PINUI.clearDots('setup');
@@ -133,19 +137,19 @@ function populateSettings() {
   document.getElementById('set-business').value = profile.businessName || '';
   document.getElementById('set-owner').value    = profile.ownerName    || '';
   document.getElementById('set-phone').value    = profile.phone        || '';
-  document.getElementById('set-url').value      = AUTH.getApiUrl()     || '';
+  document.getElementById('set-email').value    = profile.email        || '';
 }
 
 function saveSettings() {
   const business = document.getElementById('set-business').value.trim();
   const owner    = document.getElementById('set-owner').value.trim();
   const phone    = document.getElementById('set-phone').value.trim();
-  const url      = document.getElementById('set-url').value.trim();
+  const email    = document.getElementById('set-email').value.trim();
 
   if (!business) { showToast('Business name is required', 'error'); return; }
 
-  AUTH.saveProfile({ businessName: business, ownerName: owner, phone });
-  if (url) AUTH.saveApiUrl(url);
+  const profile = AUTH.getProfile() || {};
+  AUTH.saveProfile({ ...profile, businessName: business, ownerName: owner, phone, email });
 
   document.getElementById('business-name-display').textContent = business;
   document.getElementById('strip-info').textContent            = business;
