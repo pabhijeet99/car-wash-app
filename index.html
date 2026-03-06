@@ -40,22 +40,20 @@
       </form>
     </div>
 
-    <!-- Step 2: Apps Script URL -->
+    <!-- Step 2: Email for Sheet sharing -->
     <div class="setup-step" id="setup-step-2" hidden>
-      <div class="auth-logo">📊</div>
-      <h2 class="auth-title">Connect Google Sheet</h2>
-      <p class="auth-subtitle">Enter your Google Apps Script URL to save data to Google Sheets</p>
+      <div class="auth-logo">📧</div>
+      <h2 class="auth-title">Your Email</h2>
+      <p class="auth-subtitle">We'll create your Google Sheet and share it to your email automatically</p>
       <form id="setup-form-2">
         <div class="form-group">
-          <label>Apps Script URL <span class="required">*</span></label>
-          <input type="url" id="s-url" placeholder="https://script.google.com/macros/s/.../exec" required />
+          <label>Gmail Address <span class="required">*</span></label>
+          <input type="email" id="s-email" placeholder="yourname@gmail.com" required />
         </div>
         <p class="auth-note" style="text-align:left; margin-bottom:10px">
-          📋 <strong>How to get this URL:</strong><br/>
-          1. Go to <strong>script.google.com</strong><br/>
-          2. Open your CarWash project<br/>
-          3. Click Deploy → Manage Deployments<br/>
-          4. Copy the Web App URL
+          ✅ A <strong>Google Sheet</strong> named "Car Wash Records" will be
+          automatically created and shared to this email.<br/><br/>
+          📱 You can view all your data anytime at <strong>sheets.google.com</strong>
         </p>
         <div style="display:flex; gap:10px">
           <button type="button" class="btn-secondary" onclick="goSetupStep(1)">← Back</button>
@@ -271,8 +269,8 @@
           <input type="tel" id="set-phone" maxlength="10" />
         </div>
         <div class="form-group">
-          <label>Apps Script URL</label>
-          <input type="url" id="set-url" placeholder="https://script.google.com/macros/s/.../exec" />
+          <label>Email Address</label>
+          <input type="email" id="set-email" placeholder="yourname@gmail.com" />
         </div>
         <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
 
