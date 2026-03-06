@@ -104,7 +104,6 @@ const SHEETS = {
 
     const res  = await fetch(url + '?' + params.toString());
     const data = await res.json();
-
     if (data.error) throw new Error(data.error);
     return Array.isArray(data) ? data : [];
   }
