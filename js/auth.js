@@ -50,8 +50,8 @@ const AUTH = {
 // PIN UI CONTROLLER
 // =============================================
 const PINUI = {
-  values:       { setup: '', login: '' },
-  setupPhase:   'set',
+  values:        { setup: '', login: '' },
+  setupPhase:    'set',
   setupFirstPin: '',
 
   press(mode, digit) {
@@ -109,7 +109,6 @@ const PINUI = {
       document.getElementById('setup-pin-hint').textContent = '🔁 Confirm your PIN';
     } else {
       if (this.values['setup'] === this.setupFirstPin) {
-        // PINs match — complete setup
         this._finishSetup(this.values['setup']);
       } else {
         this.setupPhase    = 'set';
@@ -155,7 +154,7 @@ const PINUI = {
 // =============================================
 // APP INIT — runs on page load
 // =============================================
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', function () {
   if (!AUTH.isSetupDone()) {
     showScreen('setup');
     goSetupStep(1);
