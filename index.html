@@ -389,6 +389,36 @@ input,select,textarea{font-family:var(--f);outline:none}
   </div>
 </div>
 
+<!-- ══ CLIENT ID SETUP SCREEN ════════════════ -->
+<div id="scr-clientid" class="scr">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:28px 22px;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(56,189,248,.12),transparent),var(--bg)">
+    <div style="width:100%;max-width:440px">
+      <div style="font-size:52px;text-align:center;margin-bottom:12px">🔑</div>
+      <h2 style="font-family:var(--f);font-size:24px;font-weight:800;text-align:center;margin-bottom:6px">One-time Setup</h2>
+      <p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:28px;line-height:1.6">Enter your Google OAuth Client ID to connect this app to Google Sheets. This is a <strong style="color:var(--sky)">free, one-time step</strong>.</p>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 18px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px">📋 Step-by-step</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text2);line-height:1.6">
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">1</span><span>Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--sky)">console.cloud.google.com</a> and create a project</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">2</span><span>Enable <strong style="color:var(--text)">Google Sheets API</strong> and <strong style="color:var(--text)">Google Drive API</strong></span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">3</span><span>Create <strong style="color:var(--text)">OAuth Client ID</strong> → type: Web application</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">4</span><span>Add your site URL to <strong style="color:var(--text)">Authorized JavaScript origins</strong><br/><span id="origin-hint" style="color:var(--amber);font-size:11px"></span></span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">5</span><span>Copy the <strong style="color:var(--text)">Client ID</strong> and paste below</span></div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Google OAuth Client ID <span class="req">*</span></label>
+        <input type="text" id="client-id-inp" placeholder="xxxxxxxxx.apps.googleusercontent.com" style="font-size:13px"/>
+        <div class="note" style="margin-top:8px">Looks like: <strong>123456789-abcdef.apps.googleusercontent.com</strong></div>
+      </div>
+      <button class="btn btn-p" onclick="saveClientId()" style="margin-top:12px">Save & Continue →</button>
+      <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">Your Client ID is stored only on this device</p>
+    </div>
+  </div>
+</div>
+
 <!-- ══ PIN SCREEN ═════════════════════════════ -->
 <div id="scr-pin" class="scr">
   <div class="pin-wrap">
@@ -568,6 +598,14 @@ input,select,textarea{font-family:var(--f);outline:none}
       <div class="sset">
         <div class="sset-ttl">📥 Export</div>
         <button class="btn btn-s" onclick="exportCSV()">⬇️ Download as CSV</button>
+      </div>
+
+      <!-- Google Client ID -->
+      <div class="sset">
+        <div class="sset-ttl">🔑 Google Client ID</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px">If Google Sign-In stops working, update your OAuth Client ID here.</p>
+        <div class="fg"><label>Client ID</label><input type="text" id="set-cid" placeholder="xxxxx.apps.googleusercontent.com" style="font-size:12px"/></div>
+        <button class="btn btn-s" onclick="updateClientId()">Update Client ID</button>
       </div>
     </section>
 
@@ -1398,10 +1436,19 @@ function fillSettings() {
   document.getElementById('set-biz').value = cfg.biz || '';
   document.getElementById('set-owner').value = cfg.owner || '';
   document.getElementById('set-mob').value = cfg.mob || '';
+  document.getElementById('set-cid').value = CONFIG.clientId || '';
   const initials = (info.name||info.email||'?')[0].toUpperCase();
   document.getElementById('sett-av').textContent = initials;
   document.getElementById('sett-name').textContent = info.name || info.email || '—';
   document.getElementById('sett-email').textContent = info.email || '—';
+}
+function updateClientId() {
+  const val = document.getElementById('set-cid').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    toast('Invalid Client ID format', 'er'); return;
+  }
+  LS.s('client_id', val);
+  toast('Client ID updated ✅', 'ok');
 }
 function saveSettings() {
   const cfg = LS.g('cfg') || {};
@@ -1429,24 +1476,43 @@ function exportCSV() {
 }
 
 /* ══════════════════════════════════════════════
-   CONFIG — REPLACE CLIENT ID HERE
+   CONFIG — loaded from localStorage
+   No hardcoding needed; user enters Client ID
+   once via the in-app setup screen.
 ══════════════════════════════════════════════ */
 const CONFIG = {
-  // Get this from Google Cloud Console:
-  // APIs & Services → Credentials → OAuth 2.0 Client ID
-  // Authorized JavaScript origins: https://YOUR_USERNAME.github.io
-  clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
+  get clientId() { return LS.g('client_id') || ''; }
 };
+
+function saveClientId() {
+  const val = document.getElementById('client-id-inp').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    toast('Paste a valid Client ID ending in .apps.googleusercontent.com', 'er');
+    return;
+  }
+  LS.s('client_id', val);
+  toast('Client ID saved! Signing in…', 'ok');
+  setTimeout(() => showScr('signin'), 600);
+}
 
 /* ══════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
-  // Show sign-in while GSI loads
   showScr('signin');
-  // Once GSI script is ready, try to restore session
+  // Show current origin as hint in the setup screen
+  const hint = document.getElementById('origin-hint');
+  if (hint) hint.textContent = '→ Add: ' + location.origin;
+
   window.addEventListener('load', () => {
-    setTimeout(() => AUTH.restore(), 500);
+    setTimeout(() => {
+      // If no Client ID saved yet, show setup screen
+      if (!CONFIG.clientId) {
+        showScr('clientid');
+        return;
+      }
+      AUTH.restore();
+    }, 500);
   });
 });
 </script>
