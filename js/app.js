@@ -41,7 +41,7 @@ function goSetupStep(step) {
 }
 
 // Setup Step 1: Business Info
-document.getElementById('setup-form-1').addEventListener('submit', function(e) {
+document.getElementById('setup-form-1').addEventListener('submit', function (e) {
   e.preventDefault();
   const business = document.getElementById('s-business').value.trim();
   const owner    = document.getElementById('s-owner').value.trim();
@@ -57,7 +57,7 @@ document.getElementById('setup-form-1').addEventListener('submit', function(e) {
 });
 
 // Setup Step 2: Email
-document.getElementById('setup-form-2').addEventListener('submit', function(e) {
+document.getElementById('setup-form-2').addEventListener('submit', function (e) {
   e.preventDefault();
   const email = document.getElementById('s-email').value.trim();
 
@@ -66,12 +66,10 @@ document.getElementById('setup-form-2').addEventListener('submit', function(e) {
     return;
   }
 
-  // Save email into profile
   const profile = AUTH.getProfile() || {};
   profile.email = email;
   AUTH.saveProfile(profile);
 
-  // Reset PIN UI for step 3
   PINUI.setupPhase    = 'set';
   PINUI.setupFirstPin = '';
   PINUI.clearDots('setup');
@@ -105,12 +103,50 @@ function showPage(pageName, title) {
   currentPage = pageName;
   document.querySelector('.app-main').scrollTop = 0;
 
-  // Populate settings when opening
   if (pageName === 'settings') populateSettings();
+  if (pageName === 'home')     loadKPIs();
 }
 
 function goBack() {
   showPage('home', 'Car Wash Manager');
+}
+
+// =============================================
+// KPI — Total Vehicles & Total Revenue
+// =============================================
+async function loadKPIs() {
+  const vehicleEl = document.getElementById('kpi-vehicles');
+  const revenueEl = document.getElementById('kpi-revenue');
+
+  vehicleEl.textContent = '…';
+  revenueEl.textContent = '…';
+
+  const sheetId = SHEETS.getSheetId();
+  if (!sheetId) {
+    vehicleEl.textContent = '—';
+    revenueEl.textContent = '—';
+    return;
+  }
+
+  try {
+    // Fetch ALL records by searching with a wildcard-like broad query
+    // We search by a common digit '0' across vehicle numbers — not perfect,
+    // so we use a dedicated stats action instead.
+    const data = await SHEETS.getStats();
+
+    vehicleEl.textContent = data.totalVehicles !== undefined
+      ? data.totalVehicles.toLocaleString('en-IN')
+      : '—';
+
+    revenueEl.textContent = data.totalRevenue !== undefined
+      ? '₹' + data.totalRevenue.toLocaleString('en-IN')
+      : '—';
+
+  } catch (err) {
+    vehicleEl.textContent = '—';
+    revenueEl.textContent = '—';
+    console.warn('KPI load failed:', err.message);
+  }
 }
 
 // =============================================
@@ -138,6 +174,14 @@ function populateSettings() {
   document.getElementById('set-owner').value    = profile.ownerName    || '';
   document.getElementById('set-phone').value    = profile.phone        || '';
   document.getElementById('set-email').value    = profile.email        || '';
+
+  const sheetId   = SHEETS.getSheetId();
+  const sheetInfo = document.getElementById('sheet-id-info');
+  if (sheetInfo) {
+    sheetInfo.textContent = sheetId
+      ? '✅ Sheet linked: ' + sheetId.substring(0, 20) + '...'
+      : '⚠️ No sheet linked';
+  }
 }
 
 function saveSettings() {
@@ -158,13 +202,44 @@ function saveSettings() {
 }
 
 function changePin() {
-  // Reset PIN setup
   PINUI.setupPhase    = 'set';
   PINUI.setupFirstPin = '';
   PINUI.clearDots('setup');
   document.getElementById('setup-pin-hint').textContent = 'Enter your new 4-digit PIN';
   goSetupStep(3);
   showScreen('setup');
+}
+
+// =============================================
+// RE-REGISTER (Fix permission errors)
+// =============================================
+async function reRegister() {
+  const confirmed = confirm(
+    'This will create a new Google Sheet.\n\n' +
+    '⚠️ Your OLD data stays safe in the previous sheet.\n\n' +
+    'Only NEW entries will go to the new sheet.\n\nContinue?'
+  );
+  if (!confirmed) return;
+
+  const profile = AUTH.getProfile();
+  if (!profile) {
+    showToast('No profile found. Please restart the app.', 'error');
+    return;
+  }
+
+  showLoading('Creating new Google Sheet...');
+
+  try {
+    localStorage.removeItem('cw_sheet_id');
+    const result = await SHEETS.register(profile);
+    hideLoading();
+    showToast('✅ Re-registered! New Sheet linked.', 'success');
+    populateSettings();
+    console.log('New Sheet URL:', result.sheetUrl);
+  } catch (err) {
+    hideLoading();
+    showToast('❌ Failed: ' + err.message, 'error');
+  }
 }
 
 // =============================================
@@ -193,7 +268,7 @@ function setSearchType(type, btn) {
 // =============================================
 // NEW ENTRY FORM
 // =============================================
-document.getElementById('entry-form').addEventListener('submit', async function(e) {
+document.getElementById('entry-form').addEventListener('submit', async function (e) {
   e.preventDefault();
 
   const phone = document.getElementById('phone').value.trim();
@@ -204,7 +279,7 @@ document.getElementById('entry-form').addEventListener('submit', async function(
 
   const submitBtn  = document.getElementById('submit-btn');
   const submitText = document.getElementById('submit-text');
-  submitBtn.disabled = true;
+  submitBtn.disabled     = true;
   submitText.textContent = '⏳ Saving...';
   showLoading('Saving to Google Sheet...');
 
@@ -229,8 +304,13 @@ document.getElementById('entry-form').addEventListener('submit', async function(
     hideLoading();
     showToast('❌ ' + err.message, 'error');
     console.error('Save error:', err);
+    if (err.message.includes('Re-Register')) {
+      setTimeout(() => {
+        showToast('👉 Go to Settings → Re-Register App to fix this', 'error');
+      }, 4000);
+    }
   } finally {
-    submitBtn.disabled = false;
+    submitBtn.disabled     = false;
     submitText.textContent = '💾 Save Entry';
   }
 });
@@ -260,10 +340,15 @@ async function doSearch() {
     renderResults(results, resultsDiv);
   } catch (err) {
     resultsDiv.innerHTML = buildNoResults('Error: ' + err.message);
+    if (err.message.includes('Re-Register')) {
+      setTimeout(() => {
+        showToast('👉 Go to Settings → Re-Register App to fix this', 'error');
+      }, 1000);
+    }
   }
 }
 
-document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+document.getElementById('searchQuery').addEventListener('keypress', function (e) {
   if (e.key === 'Enter') doSearch();
 });
 
@@ -315,7 +400,11 @@ function buildNoResults(msg) {
 // =============================================
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;');
 }
 
 function _parseDate(str) {
@@ -326,8 +415,8 @@ function _parseDate(str) {
 }
 
 // Auto-uppercase vehicle number
-document.getElementById('vehicleNumber').addEventListener('input', function() {
-  const pos = this.selectionStart;
+document.getElementById('vehicleNumber').addEventListener('input', function () {
+  const pos  = this.selectionStart;
   this.value = this.value.toUpperCase();
   this.setSelectionRange(pos, pos);
 });
