@@ -1,81 +1,387 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#8B1A2B" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="CarWash" />
-  <title>Car Wash Manager</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0f172a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="CarWash"/>
+<title>Car Wash Manager</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & TOKENS ─────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;
+  --bg2:#1e293b;
+  --bg3:#334155;
+  --card:#1e293b;
+  --card2:#253347;
+  --border:#334155;
+  --accent:#38bdf8;
+  --accent2:#0ea5e9;
+  --green:#22d3a0;
+  --yellow:#fbbf24;
+  --red:#f87171;
+  --purple:#a78bfa;
+  --text:#f1f5f9;
+  --text2:#94a3b8;
+  --text3:#64748b;
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --font-head:'Syne',sans-serif;
+  --font-body:'DM Sans',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;overscroll-behavior:none}
+button{cursor:pointer;border:none;outline:none;font-family:var(--font-body)}
+input,select,textarea{font-family:var(--font-body);font-size:15px}
+input,select,textarea{outline:none}
+
+/* ── SCREENS ─────────────────────────────────────── */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* ── SETUP WIZARD ────────────────────────────────── */
+#screen-setup{align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#0f172a 0%,#1a2744 100%)}
+.setup-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px 28px;width:100%;max-width:420px;box-shadow:var(--shadow)}
+.setup-step{display:none}
+.setup-step.active{display:block}
+.setup-logo{font-size:56px;text-align:center;margin-bottom:8px}
+.setup-title{font-family:var(--font-head);font-size:26px;font-weight:800;text-align:center;color:var(--text);margin-bottom:6px}
+.setup-sub{color:var(--text2);text-align:center;font-size:14px;margin-bottom:28px}
+
+/* ── FORM ELEMENTS ───────────────────────────────── */
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:13px 16px;color:var(--text);transition:border-color .2s
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-group input.uppercase{text-transform:uppercase}
+.required{color:var(--accent);margin-left:2px}
+.form-note{font-size:13px;color:var(--text2);line-height:1.6;background:var(--bg);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px;border:1px solid var(--border)}
+.form-note strong{color:var(--accent)}
+
+/* ── BUTTONS ─────────────────────────────────────── */
+.btn-primary{
+  display:block;width:100%;padding:15px;border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#0f172a;font-weight:700;font-size:15px;font-family:var(--font-head);
+  letter-spacing:.3px;transition:opacity .2s,transform .1s;margin-top:8px
+}
+.btn-primary:active{opacity:.85;transform:scale(.98)}
+.btn-secondary{
+  display:block;width:100%;padding:14px;border-radius:var(--radius-sm);
+  background:transparent;border:1.5px solid var(--border);
+  color:var(--text2);font-weight:600;font-size:14px;transition:border-color .2s,color .2s;margin-top:8px
+}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{
+  display:block;width:100%;padding:14px;border-radius:var(--radius-sm);
+  background:rgba(248,113,113,.12);border:1.5px solid rgba(248,113,113,.3);
+  color:var(--red);font-weight:600;font-size:14px;transition:background .2s;margin-top:10px
+}
+.btn-danger:hover{background:rgba(248,113,113,.2)}
+.btn-row{display:flex;gap:10px;margin-top:8px}
+.btn-row .btn-primary,.btn-row .btn-secondary{margin-top:0}
+
+/* ── PIN SCREEN ──────────────────────────────────── */
+#screen-login{
+  align-items:center;justify-content:center;padding:32px 24px;
+  background:linear-gradient(160deg,#0f172a 0%,#162035 60%,#0f172a 100%)
+}
+.pin-wrap{width:100%;max-width:360px;text-align:center}
+.pin-car-icon{font-size:64px;margin-bottom:12px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.pin-biz{font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.5px}
+.pin-tag{font-size:14px;color:var(--text2);margin-bottom:32px}
+.pin-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px 24px;box-shadow:var(--shadow)}
+.pin-card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:16px}
+.dot{
+  width:16px;height:16px;border-radius:50%;background:var(--bg3);
+  border:2px solid var(--border);transition:all .2s
+}
+.dot.filled{background:var(--accent);border-color:var(--accent);transform:scale(1.15)}
+.dot.error{background:var(--red);border-color:var(--red)}
+.pin-error{color:var(--red);font-size:13px;min-height:18px;margin-bottom:14px}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.key-btn{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:16px;font-size:20px;font-weight:600;font-family:var(--font-head);color:var(--text);
+  transition:background .15s,transform .1s
+}
+.key-btn:active{background:var(--bg3);transform:scale(.94)}
+.key-empty{background:transparent;border-color:transparent;pointer-events:none}
+.key-del{font-size:18px;color:var(--text2)}
+
+/* ── APP SHELL ───────────────────────────────────── */
+#app{height:100vh;display:none;flex-direction:column;overflow:hidden}
+#app.active{display:flex}
+
+.app-header{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;flex-shrink:0
+}
+.header-back{
+  width:36px;height:36px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:18px;flex-shrink:0;transition:background .15s
+}
+.header-back:hover{background:var(--bg3)}
+.header-back.hidden{opacity:0;pointer-events:none}
+.header-title{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--text);flex:1}
+.header-lock{
+  width:36px;height:36px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);flex-shrink:0
+}
+
+.app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(15,23,42,.95);backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding:8px 0 max(8px, env(safe-area-inset-bottom));z-index:100
+}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 4px;background:none;color:var(--text3);font-size:11px;font-weight:500;
+  transition:color .2s;font-family:var(--font-body)
+}
+.nav-btn .nav-icon{font-size:20px;transition:transform .2s}
+.nav-btn.active{color:var(--accent)}
+.nav-btn.active .nav-icon{transform:scale(1.15)}
+
+/* ── PAGES ───────────────────────────────────────── */
+.page{display:none;padding:20px 18px}
+.page.active{display:block}
+
+/* ── HOME PAGE ───────────────────────────────────── */
+.hero{
+  background:linear-gradient(135deg,#1e3a5f,#0f2440);
+  border:1px solid rgba(56,189,248,.2);border-radius:20px;
+  padding:24px 22px;margin-bottom:20px;position:relative;overflow:hidden
+}
+.hero::before{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:160px;height:160px;
+  background:radial-gradient(circle,rgba(56,189,248,.15),transparent 70%);
+  border-radius:50%
+}
+.hero-biz{font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px}
+.hero-greet{color:var(--accent);font-size:14px;font-weight:500}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.kpi-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 16px;position:relative;overflow:hidden
+}
+.kpi-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0
+}
+.kpi-card.blue::after{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.kpi-card.green::after{background:linear-gradient(90deg,var(--green),#10b981)}
+.kpi-card.yellow::after{background:linear-gradient(90deg,var(--yellow),#f59e0b)}
+.kpi-card.purple::after{background:linear-gradient(90deg,var(--purple),#8b5cf6)}
+.kpi-card.red::after{background:linear-gradient(90deg,var(--red),#ef4444)}
+.kpi-card.full{grid-column:1/-1}
+.kpi-icon{font-size:22px;margin-bottom:8px}
+.kpi-val{font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px}
+.kpi-val.small{font-size:18px}
+.kpi-label{font-size:12px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+
+.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.action-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 16px;text-align:center;transition:border-color .2s,background .2s
+}
+.action-card:active{background:var(--card2)}
+.action-icon{font-size:32px;margin-bottom:10px}
+.action-label{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px}
+.action-desc{font-size:12px;color:var(--text2)}
+
+.recent-section{margin-top:4px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-family:var(--font-head);font-size:16px;font-weight:700}
+.section-link{font-size:13px;color:var(--accent);font-weight:500}
+.recent-list{display:flex;flex-direction:column;gap:10px}
+.recent-item{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px 16px;display:flex;align-items:center;gap:14px
+}
+.recent-avatar{
+  width:40px;height:40px;border-radius:10px;background:rgba(56,189,248,.12);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0
+}
+.recent-info{flex:1;min-width:0}
+.recent-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.recent-amount{font-family:var(--font-head);font-weight:700;color:var(--green);font-size:15px;flex-shrink:0}
+.empty-state{text-align:center;padding:32px 16px;color:var(--text2)}
+.empty-state .empty-icon{font-size:40px;margin-bottom:10px}
+.empty-state p{font-size:14px}
+
+/* ── NEW ENTRY PAGE ──────────────────────────────── */
+.form-section-title{
+  font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--accent);
+  text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px;
+  display:flex;align-items:center;gap:8px
+}
+.form-section-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:2px}
+.form-section-title:first-child{margin-top:0}
+
+/* ── SEARCH PAGE ─────────────────────────────────── */
+.search-tabs{display:flex;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:16px;gap:4px}
+.search-tab{
+  flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;
+  background:transparent;color:var(--text2);transition:all .2s
+}
+.search-tab.active{background:var(--accent);color:#0f172a}
+.search-input-row{display:flex;gap:10px;margin-bottom:20px}
+.search-input{
+  flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:13px 16px;color:var(--text);font-size:15px
+}
+.search-input:focus{border-color:var(--accent)}
+.search-btn{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:var(--radius-sm);
+  padding:0 20px;color:#0f172a;font-size:18px;font-weight:700;flex-shrink:0
+}
+.result-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;margin-bottom:12px
+}
+.result-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.result-name{font-family:var(--font-head);font-size:17px;font-weight:700}
+.result-date{font-size:12px;color:var(--text2);margin-top:2px}
+.result-badge{
+  background:rgba(34,211,160,.12);border:1px solid rgba(34,211,160,.3);
+  color:var(--green);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600;
+  font-family:var(--font-head);flex-shrink:0
+}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.result-field{background:var(--bg);border-radius:8px;padding:10px 12px}
+.result-field-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.result-field-val{font-size:14px;font-weight:500;color:var(--text)}
+.result-notes{margin-top:10px;background:var(--bg);border-radius:8px;padding:10px 12px}
+.result-notes .result-field-label{margin-bottom:4px}
+
+/* ── ANALYTICS PAGE ──────────────────────────────── */
+.analytics-section{margin-bottom:24px}
+.chart-bar-wrap{display:flex;flex-direction:column;gap:8px}
+.chart-bar-row{display:flex;align-items:center;gap:10px}
+.chart-bar-label{font-size:12px;color:var(--text2);width:80px;flex-shrink:0;text-align:right}
+.chart-bar-track{flex:1;background:var(--bg2);border-radius:4px;height:10px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
+.chart-bar-val{font-size:12px;font-weight:600;color:var(--text);width:54px;flex-shrink:0;text-align:right}
+
+/* ── SETTINGS PAGE ───────────────────────────────── */
+.settings-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.settings-section-title{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.sheet-info-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--text2);margin-bottom:12px;word-break:break-all}
+
+/* ── TOAST ───────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 20px;font-size:14px;font-weight:500;color:var(--text);
+  box-shadow:var(--shadow);z-index:999;opacity:0;transition:all .3s;pointer-events:none;
+  white-space:nowrap;max-width:90vw;text-align:center
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(34,211,160,.4);color:var(--green)}
+.toast.error{border-color:rgba(248,113,113,.4);color:var(--red)}
+
+/* ── LOADING ─────────────────────────────────────── */
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.85);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;z-index:9999
+}
+.loading-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px 28px;text-align:center;min-width:200px}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--text2);font-size:14px}
+
+/* ── SCROLLBAR ───────────────────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── DIVIDER ─────────────────────────────────────── */
+.divider{height:1px;background:var(--border);margin:18px 0}
+</style>
 </head>
 <body>
 
-<!-- ================================================
-     SETUP WIZARD (First Time Only)
-     ================================================ -->
-<div id="screen-setup" hidden>
-  <div class="auth-card">
+<!-- ═══════════════════════════════════════════════
+     SETUP WIZARD
+══════════════════════════════════════════════════ -->
+<div id="screen-setup" class="screen">
+  <div class="setup-card">
 
     <!-- Step 1: Business Info -->
-    <div class="setup-step" id="setup-step-1">
-      <div class="auth-logo">🚗💧</div>
-      <h2 class="auth-title">Welcome!</h2>
-      <p class="auth-subtitle">Let's set up your car wash app</p>
-      <form id="setup-form-1">
-        <div class="form-group">
-          <label>Business Name <span class="required">*</span></label>
-          <input type="text" id="s-business" placeholder="e.g. Rahul Car Wash" required />
-        </div>
-        <div class="form-group">
-          <label>Owner Name <span class="required">*</span></label>
-          <input type="text" id="s-owner" placeholder="Your full name" required />
-        </div>
-        <div class="form-group">
-          <label>Mobile Number</label>
-          <input type="tel" id="s-phone" placeholder="10-digit number" maxlength="10" />
-        </div>
-        <button type="submit" class="btn-primary">Next →</button>
-      </form>
+    <div class="setup-step active" id="setup-step-1">
+      <div class="setup-logo">🚗💧</div>
+      <h2 class="setup-title">Welcome!</h2>
+      <p class="setup-sub">Let's set up your car wash manager</p>
+      <div class="form-group">
+        <label>Business Name <span class="required">*</span></label>
+        <input type="text" id="s-business" placeholder="e.g. Rahul Car Wash" required/>
+      </div>
+      <div class="form-group">
+        <label>Owner Name <span class="required">*</span></label>
+        <input type="text" id="s-owner" placeholder="Your full name" required/>
+      </div>
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" id="s-phone" placeholder="10-digit number" maxlength="10"/>
+      </div>
+      <button class="btn-primary" onclick="setupStep1()">Next →</button>
     </div>
 
     <!-- Step 2: Email -->
-    <div class="setup-step" id="setup-step-2" hidden>
-      <div class="auth-logo">📧</div>
-      <h2 class="auth-title">Your Email</h2>
-      <p class="auth-subtitle">We'll create your Google Sheet and share it to your email automatically</p>
-      <form id="setup-form-2">
-        <div class="form-group">
-          <label>Gmail Address <span class="required">*</span></label>
-          <input type="email" id="s-email" placeholder="yourname@gmail.com" required />
-        </div>
-        <p class="auth-note">
-          ✅ A <strong>Google Sheet</strong> named "Car Wash Records" will be
-          automatically created and shared to this email.<br/><br/>
-          📱 View all your data anytime at <strong>sheets.google.com</strong>
-        </p>
-        <div style="display:flex; gap:10px">
-          <button type="button" class="btn-secondary" onclick="goSetupStep(1)">← Back</button>
-          <button type="submit" class="btn-primary" style="margin-top:0">Next →</button>
-        </div>
-      </form>
+    <div class="setup-step" id="setup-step-2">
+      <div class="setup-logo">📧</div>
+      <h2 class="setup-title">Your Email</h2>
+      <p class="setup-sub">A Google Sheet called <strong>"Car Wash Data"</strong> will be auto-created and shared to you</p>
+      <div class="form-group">
+        <label>Gmail Address <span class="required">*</span></label>
+        <input type="email" id="s-email" placeholder="yourname@gmail.com" required/>
+      </div>
+      <div class="form-note">
+        ✅ A Google Sheet named <strong>"Car Wash Data"</strong> will be automatically created in your Drive.<br/><br/>
+        📱 View it anytime at <strong>sheets.google.com</strong>
+      </div>
+      <div class="btn-row" style="margin-top:18px">
+        <button class="btn-secondary" onclick="goSetupStep(1)">← Back</button>
+        <button class="btn-primary" onclick="setupStep2()">Next →</button>
+      </div>
     </div>
 
     <!-- Step 3: Set PIN -->
-    <div class="setup-step" id="setup-step-3" hidden>
-      <div class="auth-logo">🔐</div>
-      <h2 class="auth-title">Set Your PIN</h2>
-      <p class="auth-subtitle">Create a 4-digit PIN to protect your app</p>
-
+    <div class="setup-step" id="setup-step-3">
+      <div class="setup-logo">🔐</div>
+      <h2 class="setup-title">Set Your PIN</h2>
+      <p class="setup-sub">Create a 4-digit PIN to protect your app</p>
       <div class="pin-dots" id="setup-dots">
-        <span class="dot" id="sd0"></span>
-        <span class="dot" id="sd1"></span>
-        <span class="dot" id="sd2"></span>
-        <span class="dot" id="sd3"></span>
+        <span class="dot" id="sd0"></span><span class="dot" id="sd1"></span>
+        <span class="dot" id="sd2"></span><span class="dot" id="sd3"></span>
       </div>
-      <p class="pin-hint" id="setup-pin-hint">Enter a 4-digit PIN</p>
-
+      <p class="pin-error" id="setup-hint">Enter a 4-digit PIN</p>
       <div class="pin-keypad">
         <button class="key-btn" onclick="PINUI.press('setup','1')">1</button>
         <button class="key-btn" onclick="PINUI.press('setup','2')">2</button>
@@ -95,30 +401,21 @@
   </div>
 </div>
 
-<!-- ================================================
-     PIN LOGIN SCREEN — Kushals style
-     ================================================ -->
-<div id="screen-login" hidden>
-  <div class="pin-screen">
-
-    <!-- Brand Block -->
-    <div class="pin-brand-icon">🚗</div>
-    <div class="pin-biz-name" id="pin-biz-name">Car Wash</div>
-    <div class="pin-tagline" id="pin-biz-tagline">Manager</div>
-    <p class="pin-subtitle">Enter your PIN to continue</p>
-
-    <!-- White Login Card -->
-    <div class="login-card">
-      <p class="login-card-title">Sign In</p>
-
+<!-- ═══════════════════════════════════════════════
+     PIN LOGIN
+══════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="pin-wrap">
+    <div class="pin-car-icon">🚗</div>
+    <div class="pin-biz" id="login-biz-name">Car Wash</div>
+    <div class="pin-tag" id="login-biz-tag">Manager</div>
+    <div class="pin-card">
+      <p class="pin-card-title">Enter PIN to continue</p>
       <div class="pin-dots" id="login-dots">
-        <span class="dot" id="ld0"></span>
-        <span class="dot" id="ld1"></span>
-        <span class="dot" id="ld2"></span>
-        <span class="dot" id="ld3"></span>
+        <span class="dot" id="ld0"></span><span class="dot" id="ld1"></span>
+        <span class="dot" id="ld2"></span><span class="dot" id="ld3"></span>
       </div>
-      <p class="pin-error" id="login-pin-error"></p>
-
+      <p class="pin-error" id="login-error"></p>
       <div class="pin-keypad">
         <button class="key-btn" onclick="PINUI.press('login','1')">1</button>
         <button class="key-btn" onclick="PINUI.press('login','2')">2</button>
@@ -134,114 +431,135 @@
         <button class="key-btn key-del" onclick="PINUI.del('login')">⌫</button>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- ================================================
+<!-- ═══════════════════════════════════════════════
      MAIN APP
-     ================================================ -->
-<div id="app" hidden>
+══════════════════════════════════════════════════ -->
+<div id="app">
 
-  <!-- HEADER -->
+  <!-- Header -->
   <header class="app-header">
-    <button class="back-btn" id="back-btn" onclick="goBack()">&#8592;</button>
-    <div class="header-center">
-      <span id="header-text">Car Wash Manager</span>
-    </div>
-    <div class="header-right">
-      <button class="logout-btn" onclick="AUTH.logout()" title="Lock App">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-      </button>
-    </div>
+    <button class="header-back hidden" id="back-btn" onclick="goBack()">&#8592;</button>
+    <div class="header-title" id="header-title">Car Wash Manager</div>
+    <button class="header-lock" onclick="AUTH.logout()" title="Lock App">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </button>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="app-main">
+  <!-- Content -->
+  <main class="app-content">
 
     <!-- HOME -->
     <section id="page-home" class="page active">
-
-      <!-- Hero Banner -->
-      <div class="hero-banner">
-        <div class="hero-biz-name" id="business-name-display">Car Wash Manager</div>
-        <div class="hero-greeting" id="user-greeting">Welcome!</div>
+      <div class="hero">
+        <div class="hero-biz" id="biz-name-display">Car Wash</div>
+        <div class="hero-greet" id="user-greet">Good morning! 👋</div>
       </div>
 
-      <!-- KPI Cards -->
-      <div class="kpi-row">
-        <div class="kpi-card vehicles">
+      <!-- KPIs Row 1 -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card blue">
           <div class="kpi-icon">🚗</div>
-          <div class="kpi-value" id="kpi-vehicles">—</div>
+          <div class="kpi-val" id="kpi-total-vehicles">—</div>
           <div class="kpi-label">Total Vehicles</div>
         </div>
-        <div class="kpi-card revenue">
+        <div class="kpi-card green">
           <div class="kpi-icon">💰</div>
-          <div class="kpi-value" id="kpi-revenue">—</div>
+          <div class="kpi-val small" id="kpi-total-revenue">—</div>
           <div class="kpi-label">Total Revenue</div>
+        </div>
+        <div class="kpi-card yellow">
+          <div class="kpi-icon">📅</div>
+          <div class="kpi-val" id="kpi-today">—</div>
+          <div class="kpi-label">Today's Vehicles</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-val small" id="kpi-today-rev">—</div>
+          <div class="kpi-label">Today's Revenue</div>
+        </div>
+        <div class="kpi-card red full">
+          <div class="kpi-icon">⭐</div>
+          <div class="kpi-val small" id="kpi-top-service">—</div>
+          <div class="kpi-label">Most Popular Service</div>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="action-grid">
+      <!-- Quick Actions -->
+      <div class="actions-grid">
         <button class="action-card" onclick="showPage('new-entry','New Entry')">
-          <div class="action-icon new-entry-icon">➕</div>
+          <div class="action-icon">➕</div>
           <div class="action-label">New Entry</div>
           <div class="action-desc">Record a customer visit</div>
         </button>
-        <button class="action-card" onclick="showPage('search','Search Customer')">
-          <div class="action-icon search-icon">🔍</div>
+        <button class="action-card" onclick="showPage('search','Search')">
+          <div class="action-icon">🔍</div>
           <div class="action-label">Search</div>
           <div class="action-desc">View customer history</div>
         </button>
+        <button class="action-card" onclick="showPage('analytics','Analytics')">
+          <div class="action-icon">📈</div>
+          <div class="action-label">Analytics</div>
+          <div class="action-desc">Revenue insights</div>
+        </button>
+        <button class="action-card" onclick="showPage('settings','Settings')">
+          <div class="action-icon">⚙️</div>
+          <div class="action-label">Settings</div>
+          <div class="action-desc">Configure app</div>
+        </button>
       </div>
 
-      <!-- Info strip -->
-      <div class="info-strip">
-        <span>⚙️</span>
-        <span id="strip-info">Car Wash Manager</span>
-        <button class="strip-settings" onclick="showPage('settings','Settings')">Settings</button>
+      <!-- Recent Entries -->
+      <div class="recent-section">
+        <div class="section-header">
+          <div class="section-title">Recent Entries</div>
+          <button class="section-link" onclick="showPage('search','Search')">View all →</button>
+        </div>
+        <div class="recent-list" id="recent-list">
+          <div class="empty-state">
+            <div class="empty-icon">🚿</div>
+            <p>No entries yet. Tap <strong>New Entry</strong> to start!</p>
+          </div>
+        </div>
       </div>
-
     </section>
 
     <!-- NEW ENTRY -->
     <section id="page-new-entry" class="page">
-      <form id="entry-form" autocomplete="off">
+      <form id="entry-form" autocomplete="off" onsubmit="submitEntry(event)">
         <div class="form-section-title">Customer Info</div>
         <div class="form-group">
           <label>Customer Name <span class="required">*</span></label>
-          <input type="text" id="customerName" placeholder="e.g. Rajesh Kumar" required />
+          <input type="text" id="customerName" placeholder="e.g. Rajesh Kumar" required/>
         </div>
         <div class="form-group">
           <label>Phone Number <span class="required">*</span></label>
-          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" required />
+          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" required/>
         </div>
-
         <div class="form-section-title">Vehicle Info</div>
         <div class="form-group">
           <label>Vehicle Number <span class="required">*</span></label>
-          <input type="text" id="vehicleNumber" placeholder="e.g. KA01AB1234" class="uppercase" required />
+          <input type="text" id="vehicleNumber" placeholder="e.g. KA01AB1234" class="uppercase" required/>
         </div>
         <div class="form-group">
           <label>Vehicle Model</label>
-          <input type="text" id="vehicleModel" placeholder="e.g. Maruti Swift" />
+          <input type="text" id="vehicleModel" placeholder="e.g. Maruti Swift"/>
         </div>
-
         <div class="form-section-title">Service Info</div>
         <div class="form-group">
           <label>Service Type <span class="required">*</span></label>
           <select id="serviceType" required>
-            <option value="">-- Select Service --</option>
+            <option value="">— Select Service —</option>
             <option>Exterior Wash</option>
             <option>Interior Wash</option>
             <option>Full Wash (Interior + Exterior)</option>
             <option>Foam Wash</option>
             <option>Pressure Wash</option>
-            <option>Waxing &amp; Polish</option>
+            <option>Waxing & Polish</option>
             <option>Vacuum Cleaning</option>
             <option>Full Detailing</option>
             <option>Engine Wash</option>
@@ -250,118 +568,978 @@
         </div>
         <div class="form-group">
           <label>Amount (₹) <span class="required">*</span></label>
-          <input type="number" id="amount" placeholder="e.g. 300" min="0" required />
+          <input type="number" id="amount" placeholder="e.g. 300" min="0" required/>
         </div>
         <div class="form-group">
           <label>Staff Name</label>
-          <input type="text" id="staffName" placeholder="Who serviced this vehicle" />
+          <input type="text" id="staffName" placeholder="Who serviced this vehicle"/>
         </div>
         <div class="form-group">
           <label>Notes / Remarks</label>
-          <textarea id="notes" placeholder="Any special notes..." rows="3"></textarea>
+          <textarea id="notes" placeholder="Any special notes..."></textarea>
         </div>
-        <button type="submit" class="btn-primary" id="submit-btn">
-          <span id="submit-text">💾 Save Entry</span>
-        </button>
+        <button type="submit" class="btn-primary" id="submit-btn">💾 Save Entry</button>
       </form>
     </section>
 
     <!-- SEARCH -->
     <section id="page-search" class="page">
-      <div class="search-container">
-        <div class="search-toggle">
-          <button class="toggle-btn active" id="toggle-phone" onclick="setSearchType('phone',this)">📱 By Phone</button>
-          <button class="toggle-btn" id="toggle-vehicle" onclick="setSearchType('vehicle',this)">🚗 By Vehicle</button>
-        </div>
-        <div class="search-input-row">
-          <input type="tel" id="searchQuery" class="search-input" placeholder="Enter phone number..." maxlength="10" />
-          <button class="search-btn" onclick="doSearch()">🔍</button>
-        </div>
+      <div class="search-tabs">
+        <button class="search-tab active" id="tab-phone" onclick="setSearchType('phone',this)">📱 By Phone</button>
+        <button class="search-tab" id="tab-vehicle" onclick="setSearchType('vehicle',this)">🚗 By Vehicle No.</button>
+      </div>
+      <div class="search-input-row">
+        <input type="tel" id="searchQuery" class="search-input" placeholder="Enter phone number..." maxlength="10"/>
+        <button class="search-btn" onclick="doSearch()">🔍</button>
       </div>
       <div id="search-results"></div>
     </section>
 
+    <!-- ANALYTICS -->
+    <section id="page-analytics" class="page">
+      <div class="kpi-grid">
+        <div class="kpi-card blue">
+          <div class="kpi-icon">🚗</div>
+          <div class="kpi-val" id="a-total-v">—</div>
+          <div class="kpi-label">Total Vehicles</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-val small" id="a-total-r">—</div>
+          <div class="kpi-label">Total Revenue</div>
+        </div>
+        <div class="kpi-card yellow">
+          <div class="kpi-icon">📅</div>
+          <div class="kpi-val" id="a-month-v">—</div>
+          <div class="kpi-label">This Month Vehicles</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-val small" id="a-month-r">—</div>
+          <div class="kpi-label">This Month Revenue</div>
+        </div>
+        <div class="kpi-card blue full">
+          <div class="kpi-icon">📈</div>
+          <div class="kpi-val small" id="a-avg">—</div>
+          <div class="kpi-label">Average Revenue per Vehicle</div>
+        </div>
+      </div>
+
+      <div class="analytics-section">
+        <div class="section-title" style="margin-bottom:14px">Services Breakdown</div>
+        <div class="chart-bar-wrap" id="service-chart"></div>
+      </div>
+
+      <div class="analytics-section">
+        <div class="section-title" style="margin-bottom:14px">Last 7 Days Revenue</div>
+        <div class="chart-bar-wrap" id="daily-chart"></div>
+      </div>
+    </section>
+
     <!-- SETTINGS -->
     <section id="page-settings" class="page">
-      <div class="settings-card">
-        <h3 class="settings-title">⚙️ Settings</h3>
-
+      <div class="settings-section">
+        <div class="settings-section-title">⚙️ Business Info</div>
         <div class="form-group">
           <label>Business Name</label>
-          <input type="text" id="set-business" />
+          <input type="text" id="set-business"/>
         </div>
         <div class="form-group">
           <label>Owner Name</label>
-          <input type="text" id="set-owner" />
+          <input type="text" id="set-owner"/>
         </div>
         <div class="form-group">
           <label>Mobile Number</label>
-          <input type="tel" id="set-phone" maxlength="10" />
+          <input type="tel" id="set-phone" maxlength="10"/>
         </div>
         <div class="form-group">
           <label>Email Address</label>
-          <input type="email" id="set-email" placeholder="yourname@gmail.com" />
+          <input type="email" id="set-email" placeholder="yourname@gmail.com"/>
         </div>
         <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+      </div>
 
-        <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">🔐 Security</div>
+        <button class="btn-danger" onclick="changePin()">Change PIN</button>
+        <button class="btn-danger" style="background:rgba(248,113,113,.2)" onclick="AUTH.logout()">🔒 Lock App</button>
+      </div>
 
-        <button class="btn-danger" onclick="changePin()">🔐 Change PIN</button>
-        <button class="btn-danger" style="margin-top:10px; background:#C62828" onclick="AUTH.logout()">🔒 Lock App</button>
-
-        <!-- Fix Sheet Connection -->
-        <div class="settings-divider"></div>
-        <div class="reregister-zone">
-          <p class="reregister-title">🔧 Fix Sheet Connection</p>
-          <p id="sheet-id-info" class="sheet-id-info">Checking...</p>
-          <p class="reregister-desc">
-            If you see <strong>"permission error"</strong> when saving entries,
-            tap below to create a fresh Google Sheet. Your old data stays safe.
-          </p>
-          <button class="btn-reregister" onclick="reRegister()">🔄 Re-Register &amp; Fix Sheet</button>
-        </div>
-
+      <div class="settings-section">
+        <div class="settings-section-title">📊 Google Sheet</div>
+        <div class="sheet-info-box" id="sheet-id-info">Loading sheet info…</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:10px">
+          Sheet name: <strong style="color:var(--accent)">"Car Wash Data"</strong><br/>
+          If you get permission errors when saving, tap below to create a fresh sheet.
+        </p>
+        <button class="btn-secondary" onclick="reRegister()">🔄 Re-Register & Fix Sheet</button>
       </div>
     </section>
 
   </main>
 
-  <!-- BOTTOM NAV -->
+  <!-- Bottom Nav -->
   <nav class="bottom-nav">
     <button class="nav-btn active" id="nav-home" onclick="showPage('home','Car Wash Manager')">
-      <span class="nav-icon">🏠</span>
-      <span class="nav-label">Home</span>
+      <span class="nav-icon">🏠</span><span>Home</span>
     </button>
     <button class="nav-btn" id="nav-new-entry" onclick="showPage('new-entry','New Entry')">
-      <span class="nav-icon">➕</span>
-      <span class="nav-label">New Entry</span>
+      <span class="nav-icon">➕</span><span>New Entry</span>
     </button>
     <button class="nav-btn" id="nav-search" onclick="showPage('search','Search')">
-      <span class="nav-icon">🔍</span>
-      <span class="nav-label">Search</span>
+      <span class="nav-icon">🔍</span><span>Search</span>
     </button>
-    <button class="nav-btn" id="nav-settings" onclick="showPage('settings','Settings')">
-      <span class="nav-icon">⚙️</span>
-      <span class="nav-label">Settings</span>
+    <button class="nav-btn" id="nav-analytics" onclick="showPage('analytics','Analytics')">
+      <span class="nav-icon">📈</span><span>Analytics</span>
     </button>
   </nav>
+</div>
 
-</div><!-- end #app -->
-
-<!-- TOAST -->
+<!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- LOADING -->
-<div id="loading" class="loading-overlay" hidden>
+<!-- Loading overlay -->
+<div id="loading" class="loading-overlay" style="display:none">
   <div class="loading-card">
     <div class="spinner"></div>
-    <p id="loading-text">Please wait...</p>
+    <p class="loading-text" id="loading-text">Please wait…</p>
   </div>
 </div>
 
-<script src="js/sheets.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/app.js"></script>
+<!-- ═══════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════════════
+   STORAGE HELPERS
+══════════════════════════════════════════════════ */
+const LS = {
+  get:(k)=>{ try{ return JSON.parse(localStorage.getItem(k)) }catch{ return null }},
+  set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)) }catch{} },
+  del:(k)=>{ try{ localStorage.removeItem(k) }catch{} }
+};
+
+/* ══════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════ */
+let toastTimer;
+function toast(msg, type='', dur=3000){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type||'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ el.className='toast' }, dur);
+}
+
+/* ══════════════════════════════════════════════════
+   LOADING
+══════════════════════════════════════════════════ */
+function showLoading(msg='Please wait…'){
+  document.getElementById('loading-text').textContent=msg;
+  document.getElementById('loading').style.display='flex';
+}
+function hideLoading(){ document.getElementById('loading').style.display='none'; }
+
+/* ══════════════════════════════════════════════════
+   SCREEN MANAGER
+══════════════════════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById('screen-'+id);
+  if(el){ el.classList.add('active'); }
+  // app is not a .screen
+  document.getElementById('app').style.display=(id==='app')?'flex':'none';
+  if(id==='app') document.getElementById('app').classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════
+   SETUP WIZARD
+══════════════════════════════════════════════════ */
+function goSetupStep(n){
+  document.querySelectorAll('.setup-step').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById('setup-step-'+n);
+  if(el) el.classList.add('active');
+}
+function setupStep1(){
+  const biz=document.getElementById('s-business').value.trim();
+  const owner=document.getElementById('s-owner').value.trim();
+  if(!biz||!owner){ toast('Please fill Business Name and Owner Name','error'); return; }
+  goSetupStep(2);
+}
+function setupStep2(){
+  const email=document.getElementById('s-email').value.trim();
+  if(!email||!email.includes('@')){ toast('Please enter a valid email','error'); return; }
+  goSetupStep(3);
+  PINUI.reset('setup');
+}
+
+let setupPinFirst='', setupPinConfirm='';
+const SETUP_PIN_STATE={ phase:'first' };
+
+/* ══════════════════════════════════════════════════
+   PIN UI
+══════════════════════════════════════════════════ */
+const PINUI={
+  _val:{ setup:'', login:'', change:'' },
+  _dots:{ setup:'setup-dots', login:'login-dots', change:'change-dots' },
+  _err:{ setup:'setup-hint', login:'login-error', change:'change-error' },
+  reset(ctx){ this._val[ctx]=''; this._render(ctx); },
+  press(ctx,d){
+    if(this._val[ctx].length>=4) return;
+    this._val[ctx]+=d;
+    this._render(ctx);
+    if(this._val[ctx].length===4) setTimeout(()=>this._complete(ctx),120);
+  },
+  del(ctx){
+    this._val[ctx]=this._val[ctx].slice(0,-1);
+    this._render(ctx);
+  },
+  _render(ctx){
+    const dotsId=this._dots[ctx];
+    const pin=this._val[ctx];
+    const wrap=document.getElementById(dotsId);
+    if(!wrap) return;
+    wrap.querySelectorAll('.dot').forEach((d,i)=>{
+      d.classList.toggle('filled', i<pin.length);
+      d.classList.remove('error');
+    });
+  },
+  _shake(ctx){
+    const wrap=document.getElementById(this._dots[ctx]);
+    if(!wrap) return;
+    wrap.querySelectorAll('.dot').forEach(d=>d.classList.add('error'));
+    setTimeout(()=>wrap.querySelectorAll('.dot').forEach(d=>d.classList.remove('error')), 600);
+    this.reset(ctx);
+  },
+  _complete(ctx){
+    const pin=this._val[ctx];
+    if(ctx==='setup'){
+      if(SETUP_PIN_STATE.phase==='first'){
+        setupPinFirst=pin;
+        SETUP_PIN_STATE.phase='confirm';
+        this.reset('setup');
+        document.getElementById('setup-hint').textContent='Confirm your PIN';
+      } else {
+        if(pin===setupPinFirst){
+          // save everything
+          const cfg={
+            business: document.getElementById('s-business').value.trim(),
+            owner:    document.getElementById('s-owner').value.trim(),
+            phone:    document.getElementById('s-phone').value.trim(),
+            email:    document.getElementById('s-email').value.trim(),
+            pin:      pin
+          };
+          LS.set('cfg', cfg);
+          SETUP_PIN_STATE.phase='first';
+          setupPinFirst='';
+          SHEETS.register(cfg);
+        } else {
+          document.getElementById('setup-hint').textContent='PINs do not match. Try again.';
+          SETUP_PIN_STATE.phase='first';
+          setupPinFirst='';
+          this._shake('setup');
+        }
+      }
+    } else if(ctx==='login'){
+      AUTH.checkPin(pin);
+    } else if(ctx==='change'){
+      CHANGE_PIN.handle(pin);
+    }
+  }
+};
+
+/* ══════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════ */
+const AUTH={
+  checkPin(pin){
+    const cfg=LS.get('cfg');
+    if(cfg && pin===cfg.pin){
+      PINUI.reset('login');
+      APP.boot();
+    } else {
+      PINUI._shake('login');
+      document.getElementById('login-error').textContent='Incorrect PIN. Try again.';
+      setTimeout(()=>document.getElementById('login-error').textContent='', 2000);
+    }
+  },
+  logout(){
+    showScreen('login');
+    PINUI.reset('login');
+  }
+};
+
+/* ══════════════════════════════════════════════════
+   CHANGE PIN
+══════════════════════════════════════════════════ */
+const CHANGE_PIN={
+  _phase:'old', _first:'',
+  init(){
+    this._phase='old'; this._first='';
+    // inject change-pin UI into a modal
+    let modal=document.getElementById('change-pin-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='change-pin-modal';
+      modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.9);backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px';
+      modal.innerHTML=`
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px 24px;width:100%;max-width:360px;text-align:center">
+          <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;margin-bottom:8px">Change PIN</h3>
+          <p id="change-pin-hint" style="color:var(--text2);font-size:14px;margin-bottom:20px">Enter your current PIN</p>
+          <div class="pin-dots" id="change-dots">
+            <span class="dot" id="cd0"></span><span class="dot" id="cd1"></span>
+            <span class="dot" id="cd2"></span><span class="dot" id="cd3"></span>
+          </div>
+          <p class="pin-error" id="change-error" style="margin:10px 0"></p>
+          <div class="pin-keypad">
+            <button class="key-btn" onclick="PINUI.press('change','1')">1</button>
+            <button class="key-btn" onclick="PINUI.press('change','2')">2</button>
+            <button class="key-btn" onclick="PINUI.press('change','3')">3</button>
+            <button class="key-btn" onclick="PINUI.press('change','4')">4</button>
+            <button class="key-btn" onclick="PINUI.press('change','5')">5</button>
+            <button class="key-btn" onclick="PINUI.press('change','6')">6</button>
+            <button class="key-btn" onclick="PINUI.press('change','7')">7</button>
+            <button class="key-btn" onclick="PINUI.press('change','8')">8</button>
+            <button class="key-btn" onclick="PINUI.press('change','9')">9</button>
+            <button class="key-btn key-empty"></button>
+            <button class="key-btn" onclick="PINUI.press('change','0')">0</button>
+            <button class="key-btn key-del" onclick="PINUI.del('change')">⌫</button>
+          </div>
+          <button onclick="CHANGE_PIN.close()" style="margin-top:16px;color:var(--text2);font-size:14px;background:none;font-family:var(--font-body)">Cancel</button>
+        </div>`;
+      document.body.appendChild(modal);
+    }
+    modal.style.display='flex';
+    PINUI.reset('change');
+  },
+  close(){
+    const m=document.getElementById('change-pin-modal');
+    if(m) m.style.display='none';
+    this._phase='old'; this._first='';
+  },
+  handle(pin){
+    const cfg=LS.get('cfg');
+    if(this._phase==='old'){
+      if(pin!==cfg.pin){
+        PINUI._shake('change');
+        document.getElementById('change-error').textContent='Incorrect current PIN';
+        setTimeout(()=>document.getElementById('change-error').textContent='', 2000);
+        return;
+      }
+      this._phase='new1';
+      this._first='';
+      document.getElementById('change-pin-hint').textContent='Enter your new PIN';
+      PINUI.reset('change');
+    } else if(this._phase==='new1'){
+      this._first=pin;
+      this._phase='new2';
+      document.getElementById('change-pin-hint').textContent='Confirm your new PIN';
+      PINUI.reset('change');
+    } else if(this._phase==='new2'){
+      if(pin!==this._first){
+        PINUI._shake('change');
+        document.getElementById('change-error').textContent='PINs do not match';
+        this._phase='new1'; this._first='';
+        setTimeout(()=>document.getElementById('change-error').textContent='', 2000);
+        return;
+      }
+      cfg.pin=pin; LS.set('cfg',cfg);
+      this.close();
+      toast('PIN changed successfully!','success');
+    }
+  }
+};
+function changePin(){ CHANGE_PIN.init(); }
+
+/* ══════════════════════════════════════════════════
+   GOOGLE SHEETS API
+══════════════════════════════════════════════════ */
+const SHEET_NAME = 'Car Wash Data';
+
+const SHEETS={
+  _token:null,
+  _sheetId:null,
+
+  // Called after setup — auto-create the sheet
+  async register(cfg){
+    showLoading('Connecting to Google…');
+    try {
+      const token = await this._getToken(cfg.email);
+      if(!token){ hideLoading(); toast('Could not connect to Google. Check email and try again.','error'); return; }
+      this._token=token;
+      const sheetId = await this._createSheet(token);
+      if(!sheetId){ hideLoading(); toast('Could not create Google Sheet.','error'); return; }
+      this._sheetId=sheetId;
+      cfg.sheetId=sheetId;
+      LS.set('cfg',cfg);
+      LS.set('token',token);
+      hideLoading();
+      toast('Setup complete! Sheet "'+SHEET_NAME+'" created.','success');
+      APP.boot();
+    } catch(e){
+      hideLoading();
+      console.error(e);
+      toast('Error: '+e.message,'error');
+    }
+  },
+
+  // Get OAuth token via Google Identity Services
+  _getToken(email){
+    return new Promise((resolve)=>{
+      if(!window.google || !google.accounts){
+        // Load Google Identity Services
+        const s=document.createElement('script');
+        s.src='https://accounts.google.com/gsi/client';
+        s.onload=()=>this._requestToken(email, resolve);
+        s.onerror=()=>resolve(null);
+        document.head.appendChild(s);
+      } else {
+        this._requestToken(email, resolve);
+      }
+    });
+  },
+
+  _requestToken(email, resolve){
+    const cfg=LS.get('cfg');
+    const clientId = cfg && cfg.clientId ? cfg.clientId : '';
+    if(!clientId){
+      // No client ID — use Apps Script backend mode
+      resolve('APPS_SCRIPT');
+      return;
+    }
+    try {
+      const client=google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope:'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+        hint: email,
+        callback:(resp)=>{
+          if(resp.error){ resolve(null); return; }
+          resolve(resp.access_token);
+        }
+      });
+      client.requestAccessToken();
+    } catch(e){ resolve(null); }
+  },
+
+  async _createSheet(token){
+    if(token==='APPS_SCRIPT') return 'APPS_SCRIPT';
+    try {
+      const res=await fetch('https://sheets.googleapis.com/v4/spreadsheets',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          properties:{ title: SHEET_NAME },
+          sheets:[{ properties:{ title:'Entries' } }]
+        })
+      });
+      const data=await res.json();
+      if(!data.spreadsheetId) return null;
+      const sid=data.spreadsheetId;
+      // Write header row
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Entries!A1:I1?valueInputOption=RAW`,{
+        method:'PUT',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({ values:[['Date & Time','Customer Name','Phone','Vehicle No.','Vehicle Model','Service Type','Amount (₹)','Staff','Notes']] })
+      });
+      return sid;
+    } catch(e){ console.error(e); return null; }
+  },
+
+  async appendRow(rowData){
+    const cfg=LS.get('cfg');
+    if(!cfg || !cfg.sheetId) return { error:'No sheet configured' };
+
+    // If using Apps Script backend
+    if(cfg.sheetId==='APPS_SCRIPT'){
+      return await this._appendViaAppsScript(cfg, rowData);
+    }
+
+    let token = LS.get('token');
+    if(!token) return { error:'Not authenticated' };
+
+    try {
+      const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Entries!A:I:append?valueInputOption=USER_ENTERED`,{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({ values:[rowData] })
+      });
+      const data=await res.json();
+      if(data.error){
+        // Token may have expired
+        if(data.error.code===401){
+          const newToken=await this._getToken(cfg.email);
+          if(newToken && newToken!=='APPS_SCRIPT'){
+            LS.set('token',newToken);
+            return await this.appendRow(rowData);
+          }
+        }
+        return { error: data.error.message };
+      }
+      return { ok:true };
+    } catch(e){ return { error:e.message }; }
+  },
+
+  async _appendViaAppsScript(cfg, rowData){
+    const url=cfg.appsScriptUrl;
+    if(!url) return { error:'No Apps Script URL configured' };
+    try {
+      const res=await fetch(url,{
+        method:'POST',
+        body:JSON.stringify({ action:'append', row:rowData, sheetName: SHEET_NAME }),
+        headers:{'Content-Type':'application/json'}
+      });
+      const data=await res.json();
+      return data.ok ? { ok:true } : { error:data.error||'Unknown error' };
+    } catch(e){ return { error:e.message }; }
+  },
+
+  async readAll(){
+    const cfg=LS.get('cfg');
+    if(!cfg || !cfg.sheetId) return [];
+
+    if(cfg.sheetId==='APPS_SCRIPT'){
+      return await this._readViaAppsScript(cfg);
+    }
+
+    let token=LS.get('token');
+    if(!token) return [];
+
+    try {
+      const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Entries!A2:I`,{
+        headers:{'Authorization':'Bearer '+token}
+      });
+      const data=await res.json();
+      if(data.error){
+        if(data.error.code===401){
+          const newToken=await this._getToken(cfg.email);
+          if(newToken && newToken!=='APPS_SCRIPT'){
+            LS.set('token',newToken);
+            return await this.readAll();
+          }
+        }
+        return [];
+      }
+      return data.values||[];
+    } catch(e){ console.error(e); return []; }
+  },
+
+  async _readViaAppsScript(cfg){
+    const url=cfg.appsScriptUrl;
+    if(!url) return [];
+    try {
+      const res=await fetch(url+'?action=read&sheetName='+encodeURIComponent(SHEET_NAME));
+      const data=await res.json();
+      return Array.isArray(data.rows) ? data.rows : [];
+    } catch(e){ return []; }
+  }
+};
+
+/* ══════════════════════════════════════════════════
+   LOCAL DATA CACHE  (for KPIs without re-fetching)
+══════════════════════════════════════════════════ */
+function saveEntryLocal(entry){
+  const entries=LS.get('local_entries')||[];
+  entries.unshift(entry); // newest first
+  if(entries.length>500) entries.length=500; // cap
+  LS.set('local_entries', entries);
+}
+function getLocalEntries(){
+  return LS.get('local_entries')||[];
+}
+
+/* ══════════════════════════════════════════════════
+   APP BOOT & NAVIGATION
+══════════════════════════════════════════════════ */
+const APP={
+  _history:[],
+  boot(){
+    const cfg=LS.get('cfg');
+    if(cfg){
+      // Show login
+      const bizEl=document.getElementById('login-biz-name');
+      const tagEl=document.getElementById('login-biz-tag');
+      if(bizEl) bizEl.textContent=cfg.business||'Car Wash';
+      if(tagEl) tagEl.textContent=cfg.owner||'Manager';
+      showScreen('login');
+      PINUI.reset('login');
+    } else {
+      showScreen('setup');
+    }
+  },
+  enter(){
+    // Called after successful login
+    showScreen('app');
+    this._history=[];
+    showPage('home','Car Wash Manager',true);
+    this._updateHeader();
+    this._fillSettings();
+    this._loadKpis();
+  },
+  _updateHeader(){
+    const cfg=LS.get('cfg');
+    if(!cfg) return;
+    document.getElementById('biz-name-display').textContent=cfg.business||'Car Wash';
+    // Greeting
+    const h=new Date().getHours();
+    const greet=h<12?'Good morning! 👋':h<17?'Good afternoon! ☀️':'Good evening! 🌙';
+    document.getElementById('user-greet').textContent=greet;
+  },
+  _fillSettings(){
+    const cfg=LS.get('cfg');
+    if(!cfg) return;
+    document.getElementById('set-business').value=cfg.business||'';
+    document.getElementById('set-owner').value=cfg.owner||'';
+    document.getElementById('set-phone').value=cfg.phone||'';
+    document.getElementById('set-email').value=cfg.email||'';
+    const sii=document.getElementById('sheet-id-info');
+    if(sii) sii.textContent=cfg.sheetId ? 'Sheet ID: '+cfg.sheetId : 'No sheet linked yet.';
+  },
+  _loadKpis(){
+    const entries=getLocalEntries();
+    updateKPIs(entries);
+    updateRecent(entries);
+  }
+};
+
+// Override AUTH login to call APP.enter
+const _origCheck=AUTH.checkPin.bind(AUTH);
+AUTH.checkPin=function(pin){
+  const cfg=LS.get('cfg');
+  if(cfg && pin===cfg.pin){
+    PINUI.reset('login');
+    APP.enter();
+  } else {
+    PINUI._shake('login');
+    document.getElementById('login-error').textContent='Incorrect PIN. Try again.';
+    setTimeout(()=>document.getElementById('login-error').textContent='', 2000);
+  }
+};
+
+let _currentPage='home';
+function showPage(id, title, skipHistory=false){
+  if(!skipHistory && _currentPage!==id) APP._history.push(_currentPage);
+  _currentPage=id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('page-'+id);
+  if(el){ el.classList.add('active'); el.scrollTop=0; }
+  document.getElementById('header-title').textContent=title;
+
+  // Back button visibility
+  const backBtn=document.getElementById('back-btn');
+  if(APP._history.length>0) backBtn.classList.remove('hidden');
+  else backBtn.classList.add('hidden');
+
+  // Update nav
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const nb=document.getElementById('nav-'+id);
+  if(nb) nb.classList.add('active');
+
+  // Page-specific actions
+  if(id==='analytics') loadAnalytics();
+  if(id==='settings') APP._fillSettings();
+}
+function goBack(){
+  if(APP._history.length===0) return;
+  const prev=APP._history.pop();
+  _currentPage=prev;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('page-'+prev);
+  if(el){ el.classList.add('active'); el.scrollTop=0; }
+  // title
+  const titles={'home':'Car Wash Manager','new-entry':'New Entry','search':'Search','analytics':'Analytics','settings':'Settings'};
+  document.getElementById('header-title').textContent=titles[prev]||'';
+  const backBtn=document.getElementById('back-btn');
+  if(APP._history.length===0) backBtn.classList.add('hidden');
+  const nb=document.getElementById('nav-'+prev);
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(nb) nb.classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════
+   KPI CALCULATIONS
+══════════════════════════════════════════════════ */
+function fmtRs(n){ return '₹'+(n>=1000?(n/1000).toFixed(1)+'K':n); }
+
+function updateKPIs(entries){
+  const today=new Date().toLocaleDateString('en-IN');
+  let totalV=entries.length, totalR=0, todayV=0, todayR=0;
+  const serviceCount={};
+  entries.forEach(row=>{
+    // row = [DateTime, Name, Phone, VehicleNo, Model, Service, Amount, Staff, Notes]
+    const amt=parseFloat(row[6])||0;
+    totalR+=amt;
+    if(row[0] && row[0].startsWith(today.split('/').reverse().join('/'))){
+      // Simple date match — row[0] is like "01/06/2026 10:30 am"
+    }
+    // date match more robust
+    const rowDate=row[0]||'';
+    const parts=rowDate.split(' ')[0]; // "01/06/2026"
+    if(parts===formatDate(new Date())){
+      todayV++; todayR+=amt;
+    }
+    const svc=row[5]||'Other';
+    serviceCount[svc]=(serviceCount[svc]||0)+1;
+  });
+  const topSvc=Object.entries(serviceCount).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('kpi-total-vehicles').textContent=totalV;
+  document.getElementById('kpi-total-revenue').textContent=fmtRs(totalR);
+  document.getElementById('kpi-today').textContent=todayV;
+  document.getElementById('kpi-today-rev').textContent=fmtRs(todayR);
+  document.getElementById('kpi-top-service').textContent=topSvc?topSvc[0]+' ('+topSvc[1]+')':'—';
+}
+
+function formatDate(d){
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yyyy=d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+function formatDateTime(d){
+  const h=d.getHours(), m=String(d.getMinutes()).padStart(2,'0');
+  const ampm=h>=12?'pm':'am';
+  const h12=h%12||12;
+  return `${formatDate(d)} ${h12}:${m} ${ampm}`;
+}
+
+function updateRecent(entries){
+  const el=document.getElementById('recent-list');
+  if(!entries.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">🚿</div><p>No entries yet. Tap <strong>New Entry</strong> to start!</p></div>';
+    return;
+  }
+  const recent=entries.slice(0,5);
+  el.innerHTML=recent.map(row=>`
+    <div class="recent-item">
+      <div class="recent-avatar">🚗</div>
+      <div class="recent-info">
+        <div class="recent-name">${row[1]||'—'}</div>
+        <div class="recent-meta">${row[3]||''} · ${row[5]||''}</div>
+      </div>
+      <div class="recent-amount">${fmtRs(parseFloat(row[6])||0)}</div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   ANALYTICS PAGE
+══════════════════════════════════════════════════ */
+function loadAnalytics(){
+  const entries=getLocalEntries();
+  const today=new Date();
+  const thisMonth=today.getMonth(), thisYear=today.getFullYear();
+  let totalV=entries.length, totalR=0, monthV=0, monthR=0;
+  const serviceCount={};
+  const daily={};
+
+  // Prepare last 7 days keys
+  for(let i=6;i>=0;i--){
+    const d=new Date(today); d.setDate(d.getDate()-i);
+    daily[formatDate(d)]=0;
+  }
+
+  entries.forEach(row=>{
+    const amt=parseFloat(row[6])||0;
+    totalR+=amt;
+    const dt=parseDate(row[0]);
+    if(dt && dt.getMonth()===thisMonth && dt.getFullYear()===thisYear){
+      monthV++; monthR+=amt;
+    }
+    const dateStr=row[0]?row[0].split(' ')[0]:'';
+    if(dateStr in daily) daily[dateStr]+=amt;
+    const svc=row[5]||'Other';
+    serviceCount[svc]=(serviceCount[svc]||0)+1;
+  });
+
+  document.getElementById('a-total-v').textContent=totalV;
+  document.getElementById('a-total-r').textContent=fmtRs(totalR);
+  document.getElementById('a-month-v').textContent=monthV;
+  document.getElementById('a-month-r').textContent=fmtRs(monthR);
+  document.getElementById('a-avg').textContent=totalV ? fmtRs(Math.round(totalR/totalV)) : '—';
+
+  // Service chart
+  const svcEl=document.getElementById('service-chart');
+  const svcEntries=Object.entries(serviceCount).sort((a,b)=>b[1]-a[1]);
+  const maxSvc=svcEntries[0]?svcEntries[0][1]:1;
+  if(!svcEntries.length){ svcEl.innerHTML='<p style="color:var(--text2);font-size:14px">No data yet</p>'; }
+  else {
+    svcEl.innerHTML=svcEntries.map(([svc,cnt])=>`
+      <div class="chart-bar-row">
+        <div class="chart-bar-label" title="${svc}">${svc.length>12?svc.slice(0,12)+'…':svc}</div>
+        <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(cnt/maxSvc*100).toFixed(1)}%"></div></div>
+        <div class="chart-bar-val">${cnt} wash</div>
+      </div>`).join('');
+  }
+
+  // Daily revenue chart
+  const dayEl=document.getElementById('daily-chart');
+  const dailyEntries=Object.entries(daily);
+  const maxDay=Math.max(...dailyEntries.map(e=>e[1]),1);
+  dayEl.innerHTML=dailyEntries.map(([d,rev])=>{
+    const parts=d.split('/');
+    const label=`${parts[0]}/${parts[1]}`;
+    return `<div class="chart-bar-row">
+      <div class="chart-bar-label">${label}</div>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(rev/maxDay*100).toFixed(1)}%"></div></div>
+      <div class="chart-bar-val">${fmtRs(rev)}</div>
+    </div>`;
+  }).join('');
+}
+
+function parseDate(str){
+  if(!str) return null;
+  try {
+    const parts=str.split(' ')[0].split('/');
+    if(parts.length!==3) return null;
+    return new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+  } catch{ return null; }
+}
+
+/* ══════════════════════════════════════════════════
+   NEW ENTRY SUBMISSION
+══════════════════════════════════════════════════ */
+async function submitEntry(e){
+  e.preventDefault();
+  const name=document.getElementById('customerName').value.trim();
+  const phone=document.getElementById('phone').value.trim();
+  const vehicle=document.getElementById('vehicleNumber').value.trim().toUpperCase();
+  const model=document.getElementById('vehicleModel').value.trim();
+  const service=document.getElementById('serviceType').value;
+  const amount=document.getElementById('amount').value.trim();
+  const staff=document.getElementById('staffName').value.trim();
+  const notes=document.getElementById('notes').value.trim();
+
+  if(!name||!phone||!vehicle||!service||!amount){ toast('Please fill all required fields','error'); return; }
+  if(phone.length<10){ toast('Phone number must be 10 digits','error'); return; }
+
+  const now=formatDateTime(new Date());
+  const row=[now, name, phone, vehicle, model, service, amount, staff, notes];
+
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  showLoading('Saving entry…');
+
+  try {
+    const result=await SHEETS.appendRow(row);
+    hideLoading();
+    btn.disabled=false; btn.textContent='💾 Save Entry';
+    if(result.error){
+      toast('Saved locally. Sheet error: '+result.error,'error');
+    } else {
+      toast('Entry saved! ✅','success');
+    }
+    // Always save locally
+    saveEntryLocal(row);
+    APP._loadKpis();
+    // Reset form
+    document.getElementById('entry-form').reset();
+    showPage('home','Car Wash Manager');
+  } catch(err){
+    hideLoading();
+    btn.disabled=false; btn.textContent='💾 Save Entry';
+    // Fallback: save locally
+    saveEntryLocal(row);
+    APP._loadKpis();
+    toast('Saved locally (sheet unavailable)','error');
+    document.getElementById('entry-form').reset();
+    showPage('home','Car Wash Manager');
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   SEARCH
+══════════════════════════════════════════════════ */
+let _searchType='phone';
+function setSearchType(type, btn){
+  _searchType=type;
+  document.querySelectorAll('.search-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const inp=document.getElementById('searchQuery');
+  if(type==='phone'){
+    inp.type='tel'; inp.placeholder='Enter phone number…'; inp.maxLength=10;
+  } else {
+    inp.type='text'; inp.placeholder='Enter vehicle number…'; inp.maxLength=20;
+  }
+  inp.value='';
+  document.getElementById('search-results').innerHTML='';
+}
+
+async function doSearch(){
+  const q=document.getElementById('searchQuery').value.trim();
+  if(!q){ toast('Please enter a search term','error'); return; }
+
+  showLoading('Searching…');
+  const entries=getLocalEntries();
+  hideLoading();
+
+  const results=entries.filter(row=>{
+    if(_searchType==='phone') return row[2] && row[2].includes(q);
+    return row[3] && row[3].toUpperCase().includes(q.toUpperCase());
+  });
+
+  const el=document.getElementById('search-results');
+  if(!results.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><p>No results found for <strong>"'+q+'"</strong></p></div>';
+    return;
+  }
+  el.innerHTML=results.map(row=>`
+    <div class="result-card">
+      <div class="result-header">
+        <div>
+          <div class="result-name">${row[1]||'—'}</div>
+          <div class="result-date">📅 ${row[0]||'—'}</div>
+        </div>
+        <div class="result-badge">${fmtRs(parseFloat(row[6])||0)}</div>
+      </div>
+      <div class="result-grid">
+        <div class="result-field"><div class="result-field-label">📱 Phone</div><div class="result-field-val">${row[2]||'—'}</div></div>
+        <div class="result-field"><div class="result-field-label">🚗 Vehicle</div><div class="result-field-val">${row[3]||'—'}</div></div>
+        <div class="result-field"><div class="result-field-label">🚙 Model</div><div class="result-field-val">${row[4]||'—'}</div></div>
+        <div class="result-field"><div class="result-field-label">🧼 Service</div><div class="result-field-val">${row[5]||'—'}</div></div>
+        ${row[7]?`<div class="result-field"><div class="result-field-label">👤 Staff</div><div class="result-field-val">${row[7]}</div></div>`:''}
+      </div>
+      ${row[8]?`<div class="result-notes"><div class="result-field-label">📝 Notes</div><div class="result-field-val">${row[8]}</div></div>`:''}
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════ */
+function saveSettings(){
+  const cfg=LS.get('cfg')||{};
+  cfg.business=document.getElementById('set-business').value.trim();
+  cfg.owner=document.getElementById('set-owner').value.trim();
+  cfg.phone=document.getElementById('set-phone').value.trim();
+  cfg.email=document.getElementById('set-email').value.trim();
+  LS.set('cfg',cfg);
+  document.getElementById('biz-name-display').textContent=cfg.business||'Car Wash';
+  toast('Settings saved! ✅','success');
+}
+
+async function reRegister(){
+  const cfg=LS.get('cfg');
+  if(!cfg){ toast('Please complete setup first','error'); return; }
+  cfg.sheetId=null;
+  LS.set('cfg',cfg);
+  await SHEETS.register(cfg);
+  APP._fillSettings();
+}
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  APP.boot();
+});
+</script>
+
+<!-- Service Worker Registration -->
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
 
 </body>
 </html>

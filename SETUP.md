@@ -1,255 +1,144 @@
-# Car Wash Manager — Complete Setup Guide
+# Car Wash Manager — Setup & Go Live Guide
 
-## What's New in This Version
-- ✅ Google Sign-In (Login / Logout)
-- ✅ Auto-creates a Google Sheet in your own Google Drive on first login
-- ✅ No manual sheet setup needed
-- ✅ Works on mobile as a PWA + can be converted to Android APK
-- ✅ Completely free
+## What Changed in This Version
 
----
-
-## OVERVIEW OF STEPS
-
-| Step | What you do | Time |
-|------|-------------|------|
-| 1 | Create Google Cloud Project + get Client ID | 5 min |
-| 2 | Paste Client ID into auth.js | 1 min |
-| 3 | Host the app on GitHub Pages | 10 min |
-| 4 | Add the hosted URL to Google Cloud | 2 min |
-| 5 | Open on phone & install | 2 min |
-| 6 | (Optional) Generate APK | 5 min |
+| Feature | Before | Now |
+|---|---|---|
+| Sheet Name | "Car Wash Records" | **"Car Wash Data"** ✅ |
+| UI | Basic | Dark modern design |
+| KPIs | 2 cards | 5 KPIs (total, today, top service) |
+| Analytics page | ❌ | ✅ Revenue charts + service breakdown |
+| Recent entries | ❌ | ✅ Live recent list on home |
+| Offline support | Basic | Full local data cache |
+| PIN change | Working | Fixed |
 
 ---
 
-## STEP 1 — Get Your Google Cloud Client ID
+## STEP 1 — Upload to GitHub (Make It Live for Free)
 
-This allows the app to use Google Sign-In and access Google Sheets.
+### 1a. Create GitHub Account
+Go to **github.com** → Sign Up (free)
 
-### 1a. Create a Google Cloud Project
+### 1b. Create a new repository
+- Click **+** → **New repository**
+- Name: `car-wash-app`
+- Set to **Public**
+- Click **Create repository**
+
+### 1c. Upload files
+Upload ALL 3 files from this package:
+```
+index.html
+manifest.json
+sw.js
+```
+- On the repo page click **"uploading an existing file"**
+- Drag all 3 files → **Commit changes**
+
+### 1d. Enable GitHub Pages
+- Go to repository **Settings** → **Pages**
+- Source: **Deploy from branch** → Branch: **main** → `/ (root)`
+- Click **Save**
+
+✅ Your app will be live at:
+```
+https://YOUR_GITHUB_USERNAME.github.io/car-wash-app
+```
+(Wait 2-3 minutes for first deploy)
+
+---
+
+## STEP 2 — Connect Google Sheets (for cloud sync)
+
+> **Note:** The app works fully offline/locally without this step. Entries are stored on your phone. Skip this step if you just want to get started quickly — you can add sheet sync later.
+
+### 2a. Create Google Cloud Project
 1. Go to **console.cloud.google.com**
-2. Click the project dropdown (top left) → **New Project**
-3. Name it: `Car Wash Manager`
-4. Click **Create**
+2. Create a new project → Name: `Car Wash Manager`
 
-### 1b. Enable Required APIs
-1. In the left menu → **APIs & Services → Library**
-2. Search for **Google Sheets API** → Click it → **Enable**
-3. Go back to Library → Search for **Google Drive API** → Click it → **Enable**
+### 2b. Enable APIs
+- **APIs & Services → Library**
+- Enable **Google Sheets API**
+- Enable **Google Drive API**
 
-### 1c. Create OAuth Credentials
-1. Left menu → **APIs & Services → Credentials**
-2. Click **+ Create Credentials → OAuth client ID**
-3. If asked to configure consent screen:
-   - Choose **External** → **Create**
-   - App name: `Car Wash Manager`
-   - User support email: your Gmail
-   - Developer contact: your Gmail
-   - Click **Save and Continue** through all steps
-   - At the end click **Back to Dashboard**
-4. Now click **+ Create Credentials → OAuth client ID** again
-5. Application type: **Web application**
-6. Name: `Car Wash Web App`
-7. Under **Authorized JavaScript origins**, click **+ Add URI**:
-   - Add: `https://YOUR_GITHUB_USERNAME.github.io` (you'll add this after Step 3)
-   - Also add: `http://localhost` (for local testing)
-8. Click **Create**
-9. A popup shows your **Client ID** — it looks like:
-   ```
-   123456789-abcdefg.apps.googleusercontent.com
-   ```
-   **Copy this Client ID**
+### 2c. Create OAuth Client ID
+1. **APIs & Services → Credentials → + Create Credentials → OAuth client ID**
+2. Configure consent screen (External, add your email)
+3. Application type: **Web application**
+4. Authorized JavaScript origins:
+   - `https://YOUR_USERNAME.github.io`
+   - `http://localhost` (for testing)
+5. Copy the **Client ID**
+
+### 2d. Add Client ID to the app
+Open `index.html`, find this line near the bottom:
+```javascript
+const clientId = cfg && cfg.clientId ? cfg.clientId : '';
+```
+
+**Better approach:** In the app's Settings page, there will be a "Client ID" field where you can paste it without editing code. *(This field is pre-wired in the Settings section.)*
 
 ---
 
-## STEP 2 — Add Client ID to the App
+## STEP 3 — First Time Setup on Phone
 
-1. Open `js/auth.js` in Notepad (or any text editor)
-2. Find line 8:
-   ```javascript
-   const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-   ```
-3. Replace it with your actual Client ID:
-   ```javascript
-   const GOOGLE_CLIENT_ID = '123456789-abcdefg.apps.googleusercontent.com';
-   ```
-4. Save the file
-
----
-
-## STEP 3 — Host the App on GitHub Pages (Free)
-
-The app needs to be hosted online so it can:
-- Be opened on your phone
-- Be converted to an APK
-- Use Google Sign-In (requires a public URL)
-
-### 3a. Create a GitHub Account
-1. Go to **github.com** → Sign up (free)
-
-### 3b. Create a Repository
-1. Click **+** (top right) → **New repository**
-2. Name: `car-wash-app`
-3. Check: **Public**
-4. Click **Create repository**
-
-### 3c. Upload Your App Files
-1. On the repository page, click **uploading an existing file**
-2. Drag ALL files from your `car-wash-app` folder (keep folder structure)
-3. Files to upload:
-   ```
-   index.html
-   manifest.json
-   sw.js
-   css/style.css
-   js/auth.js
-   js/sheets.js
-   js/app.js
-   ```
-4. Click **Commit changes**
-
-### 3d. Enable GitHub Pages
-1. Repository → **Settings** → **Pages** (left sidebar)
-2. Source: **Deploy from a branch**
-3. Branch: **main** → Folder: **/ (root)**
-4. Click **Save**
-5. Wait 2-3 minutes. Your app URL will be:
-   ```
-   https://YOUR_GITHUB_USERNAME.github.io/car-wash-app
-   ```
-
----
-
-## STEP 4 — Add Your App URL to Google Cloud
-
-1. Go back to **console.cloud.google.com**
-2. **APIs & Services → Credentials**
-3. Click on your OAuth Client ID
-4. Under **Authorized JavaScript origins**, add:
-   ```
-   https://YOUR_GITHUB_USERNAME.github.io
-   ```
-5. Click **Save**
-
-Wait 5 minutes for changes to take effect.
-
----
-
-## STEP 5 — Open on Your Phone
-
-1. Open **Chrome** on your Android phone
-2. Go to: `https://YOUR_GITHUB_USERNAME.github.io/car-wash-app`
-3. You'll see the Sign-In screen → Click **Sign in with Google**
-4. Choose your Gmail account
-5. On first login, you'll be asked for:
-   - Your **Business Name** (e.g. "Rahul Car Wash")
-   - Your **Owner Name**
-   - Your **Mobile Number** (optional)
-6. The app **automatically creates a "Car Wash Records" Google Sheet** in your Drive!
+1. Open Chrome on your Android phone
+2. Go to your GitHub Pages URL
+3. You'll see the **Setup Wizard**:
+   - Enter Business Name, Owner Name, Phone
+   - Enter your Gmail (where the sheet will be shared)
+   - Set a 4-digit PIN
+4. The app creates a Google Sheet called **"Car Wash Data"** in your Drive
 
 ### Install on Home Screen (Android)
-1. Tap the **three-dot menu** (⋮) in Chrome
-2. Tap **Add to Home Screen**
-3. Tap **Add** — an app icon appears on your home screen!
+1. Tap **⋮** menu in Chrome
+2. **Add to Home Screen** → **Add**
 
 ### Install on Home Screen (iPhone)
 1. Open in **Safari**
-2. Tap the **Share** button
-3. Tap **Add to Home Screen** → **Add**
-
----
-
-## STEP 6 — Generate an Android APK (Optional)
-
-This lets you share the app as an installable APK file.
-
-### Method A: PWABuilder (Easiest — Recommended)
-1. Go to **pwabuilder.com**
-2. Enter your app URL: `https://YOUR_USERNAME.github.io/car-wash-app`
-3. Click **Start** → Wait for analysis
-4. Click **Package for stores**
-5. Choose **Android** → **Download Package**
-6. You'll get a `.apk` file
-
-### Sharing the APK with Others
-1. Share the `.apk` file via **WhatsApp / Google Drive / Email**
-2. On the receiver's phone:
-   - Go to **Settings → Security** → Enable **Install unknown apps** for the browser/file manager
-   - Open the APK file → **Install**
-
-### Method B: Play Store (for wide public distribution)
-- Requires a one-time **$25 registration fee** on Google Play Console
-- Allows listing on Play Store so anyone can download it
-- Use the PWABuilder APK package to submit
+2. Tap Share → **Add to Home Screen**
 
 ---
 
 ## HOW THE APP WORKS
 
 ```
-User opens app
-     │
-     ▼
-Login Screen (Sign in with Google)
-     │ ← user clicks Sign in
-     ▼
-Google account picker
-     │
-     ▼
-App checks if first time?
-     │
-   YES ──► Setup screen (business name, phone)
-     │              │
-   NO               │
-     │◄─────────────┘
-     ▼
-Main App (Home screen)
-     │
-     ├──► New Entry ──► Data saved to your Google Sheet
-     │
-     └──► Search ──► Searches your Google Sheet by phone/vehicle
+Open App
+   │
+   ▼
+PIN Login Screen
+   │
+   ▼
+Home (KPIs + Recent)
+   ├── New Entry → Saves to phone + Google Sheet
+   ├── Search → By phone or vehicle number
+   ├── Analytics → Revenue charts, service breakdown
+   └── Settings → Edit info, Change PIN, Fix Sheet
 ```
 
----
+## Google Sheet Format ("Car Wash Data")
 
-## YOUR DATA (Google Sheet)
-
-After first login, a sheet called **"Car Wash Records"** will appear in your Google Drive at **drive.google.com**
-
-Each row = one customer visit:
-
-| Date & Time | Customer Name | Phone | Vehicle No. | Model | Service | Amount | Staff | Notes |
+| Date & Time | Customer Name | Phone | Vehicle No. | Vehicle Model | Service Type | Amount (₹) | Staff | Notes |
 |---|---|---|---|---|---|---|---|---|
-| 05/03/2026 10:30 am | Rajesh Kumar | 9876543210 | KA01AB1234 | Swift | Full Wash | 500 | Ramu | Window cleaned |
-
----
-
-## MULTIPLE USERS / STAFF
-
-- Each staff member signs in with **their own Google account**
-- They get **their own separate Google Sheet**
-- If you want all staff to share one sheet:
-  - All staff sign in with the **same Google account** (the owner's Gmail)
+| 01/06/2026 10:30 am | Rajesh Kumar | 9876543210 | KA01AB1234 | Swift | Full Wash | 500 | Ramu | Clean |
 
 ---
 
 ## TROUBLESHOOTING
 
-**"Error 400: redirect_uri_mismatch"**
-- Your GitHub Pages URL is not added in Google Cloud Console
-- Go to Step 4 and add it
+**"PIN screen shows but can't log in"**
+- Make sure you completed all 3 setup steps
 
-**"Access blocked: Authorization Error"**
-- Go to Google Cloud Console → OAuth Consent Screen
-- Click **Publish App** (or add your email as a test user)
+**"Entry saves but not on Sheet"**
+- Go to Settings → Fix Sheet Connection → Re-Register
+- Or check your Google Cloud credentials
 
-**"Sign-in popup not appearing on phone"**
-- Make sure you're using Chrome (not Samsung browser)
-- Allow popups for the site
+**"App not loading on phone"**
+- Make sure GitHub Pages is enabled and deployed (wait 5 min)
+- Check the URL — must include `/car-wash-app` at the end
 
-**"Sheet not found" or API error**
-- Sign out and sign in again
-- Check that Google Sheets API and Drive API are enabled
+**"Want to reset the app"**
+- Open browser DevTools → Application → Local Storage → Clear
 
 ---
 
@@ -257,15 +146,9 @@ Each row = one customer visit:
 
 ```
 car-wash-app/
-├── index.html                    ← App UI (login + app screens)
-├── manifest.json                 ← PWA config
-├── sw.js                         ← Offline support
-├── css/style.css                 ← All styles
-├── js/
-│   ├── auth.js                   ← Google Sign-In (PUT CLIENT ID HERE)
-│   ├── sheets.js                 ← Google Sheets API (auto-create + read/write)
-│   └── app.js                    ← App logic, navigation, forms
-├── google-apps-script/
-│   └── Code.gs                   ← (Alternative backend — not needed with new version)
-└── SETUP.md                      ← This file
+├── index.html     ← Complete app (UI + all logic, self-contained)
+├── manifest.json  ← PWA config
+└── sw.js          ← Offline service worker
 ```
+
+> All JavaScript is inside `index.html` — no separate files needed.

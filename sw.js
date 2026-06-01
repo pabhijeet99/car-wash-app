@@ -1,39 +1,35 @@
-// Car Wash Manager - Service Worker
+const CACHE = 'carwash-v2';
+const ASSETS = ['/', '/index.html', '/manifest.json'];
 
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
-
-const CACHE = "carwash-cache-v1";
-const offlineFallbackPage = "index.html";
-
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
-});
-
-self.addEventListener('install', async (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => cache.add(offlineFallbackPage))
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {}))
   );
+  self.skipWaiting();
 });
 
-if (workbox.navigationPreload.isSupported()) {
-  workbox.navigationPreload.enable();
-}
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const preloadResp = await event.preloadResponse;
-        if (preloadResp) return preloadResp;
-        return await fetch(event.request);
-      } catch (error) {
-        const cache = await caches.open(CACHE);
-        const cachedResp = await cache.match(offlineFallbackPage);
-        return cachedResp;
-      }
-    })());
-  }
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  if (e.request.url.includes('googleapis.com') || e.request.url.includes('fonts.g')) return;
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const networkFetch = fetch(e.request).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || networkFetch;
+    })
+  );
 });
