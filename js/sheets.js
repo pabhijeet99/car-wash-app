@@ -9,8 +9,8 @@
 //    (Deploy Code.gs ONCE — all clients use this)
 // =============================================
 const MASTER_URL = 'https://script.google.com/macros/s/AKfycbzBEv95yIFn78lz8LE8VHzt9LAGg5uZNcANyaaAKFsO8zHbInkUeHDHv-4Y_5fcq78F/exec';
-
 // =============================================
+
 const SHEETS = {
 
   getMasterUrl() {
@@ -47,7 +47,6 @@ const SHEETS = {
 
     // Save the new Sheet ID for all future operations
     this.saveSheetId(data.sheetId);
-
     return data; // { success, sheetId, sheetUrl, message }
   },
 
@@ -60,7 +59,7 @@ const SHEETS = {
       throw new Error('App not configured. Please contact support.');
     }
     if (!sheetId) {
-      throw new Error('No sheet linked. Please re-register the app.');
+      throw new Error('No sheet linked. Go to Settings → Re-Register App.');
     }
 
     const params = new URLSearchParams({
@@ -79,7 +78,15 @@ const SHEETS = {
     const res  = await fetch(url + '?' + params.toString());
     const data = await res.json();
 
-    if (!data.success) throw new Error(data.error || 'Failed to save record');
+    if (!data.success) {
+      const msg = data.error || 'Failed to save record';
+      // Detect permission error and give clear fix instruction
+      if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('access')) {
+        throw new Error('Sheet access error. Go to Settings → Re-Register App to fix this.');
+      }
+      throw new Error(msg);
+    }
+
     return data;
   },
 
@@ -92,7 +99,7 @@ const SHEETS = {
       throw new Error('App not configured. Please contact support.');
     }
     if (!sheetId) {
-      throw new Error('No sheet linked. Please re-register the app.');
+      throw new Error('No sheet linked. Go to Settings → Re-Register App.');
     }
 
     const params = new URLSearchParams({
@@ -105,7 +112,14 @@ const SHEETS = {
     const res  = await fetch(url + '?' + params.toString());
     const data = await res.json();
 
-    if (data.error) throw new Error(data.error);
+    if (data.error) {
+      const msg = data.error;
+      if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('access')) {
+        throw new Error('Sheet access error. Go to Settings → Re-Register App to fix this.');
+      }
+      throw new Error(msg);
+    }
+
     return Array.isArray(data) ? data : [];
   }
 };
