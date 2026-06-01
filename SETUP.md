@@ -1,154 +1,159 @@
-# Car Wash Manager — Setup & Go Live Guide
+# Car Wash Manager — Complete Setup Guide
 
-## What Changed in This Version
-
-| Feature | Before | Now |
-|---|---|---|
-| Sheet Name | "Car Wash Records" | **"Car Wash Data"** ✅ |
-| UI | Basic | Dark modern design |
-| KPIs | 2 cards | 5 KPIs (total, today, top service) |
-| Analytics page | ❌ | ✅ Revenue charts + service breakdown |
-| Recent entries | ❌ | ✅ Live recent list on home |
-| Offline support | Basic | Full local data cache |
-| PIN change | Working | Fixed |
+## What You Need (Free)
+- A GitHub account (free) → to host the app
+- A Google account → each client uses their own
 
 ---
 
-## STEP 1 — Upload to GitHub (Make It Live for Free)
+## PART 1 — Deploy the App (5 minutes)
 
-### 1a. Create GitHub Account
-Go to **github.com** → Sign Up (free)
+### Step 1: Create GitHub Repository
+1. Go to **github.com** → sign in → click **+** → **New repository**
+2. Name: `car-wash-app` | Visibility: **Public** | Click **Create**
 
-### 1b. Create a new repository
-- Click **+** → **New repository**
-- Name: `car-wash-app`
-- Set to **Public**
-- Click **Create repository**
+### Step 2: Upload Files
+On the new repo page, click **"uploading an existing file"** and upload:
+- `index.html`
+- `manifest.json`  
+- `sw.js`
 
-### 1c. Upload files
-Upload ALL 3 files from this package:
-```
-index.html
-manifest.json
-sw.js
-```
-- On the repo page click **"uploading an existing file"**
-- Drag all 3 files → **Commit changes**
+Then click **Commit changes**.
 
-### 1d. Enable GitHub Pages
-- Go to repository **Settings** → **Pages**
-- Source: **Deploy from branch** → Branch: **main** → `/ (root)`
-- Click **Save**
+### Step 3: Enable GitHub Pages
+1. Go to repo **Settings** → **Pages**
+2. Source: **Deploy from a branch** → Branch: **main** → `/root`
+3. Click **Save**
 
-✅ Your app will be live at:
+✅ App is now live at:
 ```
 https://YOUR_GITHUB_USERNAME.github.io/car-wash-app
 ```
-(Wait 2-3 minutes for first deploy)
+(Wait 2–3 minutes for first deployment)
 
 ---
 
-## STEP 2 — Connect Google Sheets (for cloud sync)
+## PART 2 — Google Cloud Setup (10 minutes, one-time)
 
-> **Note:** The app works fully offline/locally without this step. Entries are stored on your phone. Skip this step if you just want to get started quickly — you can add sheet sync later.
+This is needed so the app can create Google Sheets.  
+You only do this ONCE. All your clients use the same Client ID.
 
-### 2a. Create Google Cloud Project
+### Step 1: Create Project
 1. Go to **console.cloud.google.com**
-2. Create a new project → Name: `Car Wash Manager`
+2. Click **Select a project** → **New Project**
+3. Name: `Car Wash Manager` → **Create**
 
-### 2b. Enable APIs
-- **APIs & Services → Library**
-- Enable **Google Sheets API**
-- Enable **Google Drive API**
+### Step 2: Enable APIs
+1. Go to **APIs & Services → Library**
+2. Search for **Google Sheets API** → Enable
+3. Search for **Google Drive API** → Enable
 
-### 2c. Create OAuth Client ID
-1. **APIs & Services → Credentials → + Create Credentials → OAuth client ID**
-2. Configure consent screen (External, add your email)
+### Step 3: Configure OAuth Consent Screen
+1. Go to **APIs & Services → OAuth consent screen**
+2. User type: **External** → **Create**
+3. App name: `Car Wash Manager`
+4. User support email: your Gmail
+5. Developer contact: your Gmail
+6. Click **Save and Continue** through all steps
+7. Back on consent screen page → Click **Publish App** → **Confirm**
+
+### Step 4: Create OAuth Client ID
+1. Go to **APIs & Services → Credentials**
+2. Click **+ Create Credentials → OAuth client ID**
 3. Application type: **Web application**
-4. Authorized JavaScript origins:
-   - `https://YOUR_USERNAME.github.io`
-   - `http://localhost` (for testing)
-5. Copy the **Client ID**
-
-### 2d. Add Client ID to the app
-Open `index.html`, find this line near the bottom:
-```javascript
-const clientId = cfg && cfg.clientId ? cfg.clientId : '';
-```
-
-**Better approach:** In the app's Settings page, there will be a "Client ID" field where you can paste it without editing code. *(This field is pre-wired in the Settings section.)*
+4. Name: `Car Wash Manager`
+5. Under **Authorized JavaScript origins**, click **+ Add URI** and add:
+   ```
+   https://YOUR_GITHUB_USERNAME.github.io
+   ```
+6. Click **Create**
+7. A popup shows your **Client ID** — copy it (looks like `123456789-abcdef.apps.googleusercontent.com`)
 
 ---
 
-## STEP 3 — First Time Setup on Phone
+## PART 3 — First Open on Phone
 
-1. Open Chrome on your Android phone
-2. Go to your GitHub Pages URL
-3. You'll see the **Setup Wizard**:
-   - Enter Business Name, Owner Name, Phone
-   - Enter your Gmail (where the sheet will be shared)
-   - Set a 4-digit PIN
-4. The app creates a Google Sheet called **"Car Wash Data"** in your Drive
+1. Open Chrome → go to `https://YOUR_USERNAME.github.io/car-wash-app`
+2. The app shows a **"One-time Setup"** screen
+3. Paste your **Client ID** → tap **Save & Continue**
+4. Tap **Sign in with Google** → choose their Gmail account
+5. ✅ The app automatically creates **"Car Wash Data"** sheet in their Drive
+6. Set a PIN for quick access
 
-### Install on Home Screen (Android)
-1. Tap **⋮** menu in Chrome
-2. **Add to Home Screen** → **Add**
-
-### Install on Home Screen (iPhone)
-1. Open in **Safari**
-2. Tap Share → **Add to Home Screen**
+### Install on Home Screen
+**Android (Chrome):** Tap ⋮ menu → **Add to Home Screen** → Add  
+**iPhone (Safari):** Tap Share → **Add to Home Screen**
 
 ---
 
-## HOW THE APP WORKS
+## HOW MULTIPLE CLIENTS WORK
+
+Each client:
+1. Opens the same URL
+2. Signs in with **their own Google account**
+3. Gets **their own "Car Wash Data" sheet** created in **their own Drive**
+4. Their data is completely separate from other clients
 
 ```
-Open App
-   │
-   ▼
-PIN Login Screen
-   │
-   ▼
-Home (KPIs + Recent)
-   ├── New Entry → Saves to phone + Google Sheet
-   ├── Search → By phone or vehicle number
-   ├── Analytics → Revenue charts, service breakdown
-   └── Settings → Edit info, Change PIN, Fix Sheet
+Client A (Gmail: a@gmail.com) → "Car Wash Data" in A's Drive
+Client B (Gmail: b@gmail.com) → "Car Wash Data" in B's Drive
+Client C (Gmail: c@gmail.com) → "Car Wash Data" in C's Drive
 ```
 
-## Google Sheet Format ("Car Wash Data")
+Nobody can see anyone else's data. You only set up the Client ID once.
 
-| Date & Time | Customer Name | Phone | Vehicle No. | Vehicle Model | Service Type | Amount (₹) | Staff | Notes |
-|---|---|---|---|---|---|---|---|---|
-| 01/06/2026 10:30 am | Rajesh Kumar | 9876543210 | KA01AB1234 | Swift | Full Wash | 500 | Ramu | Clean |
+---
+
+## DATA SHEET FORMAT
+
+Sheet name: **"Car Wash Data"**
+
+| Column | Content |
+|--------|---------|
+| A | Date & Time |
+| B | Customer Name |
+| C | Phone |
+| D | Vehicle No. |
+| E | Vehicle Model |
+| F | Service Type |
+| G | Amount (₹) |
+| H | Staff |
+| I | Notes |
 
 ---
 
 ## TROUBLESHOOTING
 
-**"PIN screen shows but can't log in"**
-- Make sure you completed all 3 setup steps
+**"Error: not_allowed_js_origin"**  
+→ Your site URL is not in the Authorized JavaScript Origins.  
+→ Go to Google Cloud → Credentials → edit your Client ID → add the URL.
 
-**"Entry saves but not on Sheet"**
-- Go to Settings → Fix Sheet Connection → Re-Register
-- Or check your Google Cloud credentials
+**"Exception: You do not have permission"**  
+→ This was the old Apps Script error. This version does NOT use Apps Script.  
+→ Just sign in with Google — the sheet is created in your own Drive automatically.
 
-**"App not loading on phone"**
-- Make sure GitHub Pages is enabled and deployed (wait 5 min)
-- Check the URL — must include `/car-wash-app` at the end
+**"Sign in with Google" button does nothing**  
+→ Wait 5 seconds for the Google script to load, then try again.  
+→ Check that you entered the Client ID correctly.
 
-**"Want to reset the app"**
-- Open browser DevTools → Application → Local Storage → Clear
+**Session expired / needs to sign in again**  
+→ Google tokens expire after ~1 hour. The app auto-refreshes silently.  
+→ If it fails, tap "Switch account / Sign in again" on the PIN screen.
+
+**Want to change Google account**  
+→ Settings → Sign Out & Switch Account
 
 ---
 
-## FILE STRUCTURE
+## APP FEATURES
 
-```
-car-wash-app/
-├── index.html     ← Complete app (UI + all logic, self-contained)
-├── manifest.json  ← PWA config
-└── sw.js          ← Offline service worker
-```
-
-> All JavaScript is inside `index.html` — no separate files needed.
+- ✅ Google Sign In — each client uses their own account
+- ✅ Auto-creates **"Car Wash Data"** sheet in Google Drive  
+- ✅ Saves every entry to Google Sheets in real-time
+- ✅ Local cache — app works even if internet is slow
+- ✅ PIN lock for quick re-open by staff
+- ✅ 5 KPI cards on home screen
+- ✅ Analytics: service breakdown + 7-day revenue chart
+- ✅ Search by phone number or vehicle number
+- ✅ Export to CSV
+- ✅ Installable as PWA (works like a native app)
