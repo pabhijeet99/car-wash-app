@@ -941,17 +941,21 @@ async function ensureSheet() {
 // ═══════════════════════════════════════════════════════════
 // SYNC — append rows to sheet
 // ═══════════════════════════════════════════════════════════
-async function syncToSheet(entryObj, tabName) {
-  if (!accessToken || !sheetId) { queueSync(entryObj); return false; }
-  tabName = tabName || 'Records';
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+const entryKey = e => `${e.date}|${e.time}|${e.name}|${e.vehicle}|${e.amount}`;
+
+// Low-level single append. Returns: 'ok' | 'auth' | 'rate' | 'forbidden' | 'fail'.
+// Does NOT touch the queue — callers decide what to do with the result.
+async function appendRow(entryObj, tabName) {
   const row = [
     entryObj.date, entryObj.time, entryObj.name, entryObj.phone,
     entryObj.vehicle, entryObj.model, entryObj.service,
     entryObj.amount, entryObj.staff, entryObj.notes
   ];
+  const range = encodeURIComponent(`${tabName}!A1`);
+  let r;
   try {
-    const range = encodeURIComponent(`${tabName}!A1`);
-    const r = await fetch(
+    r = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
       {
         method: 'POST',
@@ -959,18 +963,37 @@ async function syncToSheet(entryObj, tabName) {
         body: JSON.stringify({ values: [row] })
       }
     );
-    if (r.status === 401) { accessToken = null; LSdel('accessToken'); queueSync(entryObj); return false; }
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      console.error('Append error:', r.status, err);
-      queueSync(entryObj); return false;
-    }
-    return true;
-  } catch (e) { console.error('syncToSheet:', e); queueSync(entryObj); return false; }
+  } catch (e) { console.error('appendRow network:', e); return 'fail'; }
+  if (r.ok) return 'ok';
+  if (r.status === 401) return 'auth';
+  if (r.status === 429) return 'rate';
+  if (r.status === 403) return 'forbidden';
+  const err = await r.json().catch(() => ({}));
+  console.error('Append error:', r.status, err);
+  return 'fail';
+}
+
+async function syncToSheet(entryObj, tabName) {
+  if (!accessToken || !sheetId) { queueSync(entryObj); return false; }
+  tabName = tabName || 'Records';
+  const res = await appendRow(entryObj, tabName);
+  if (res === 'ok') return true;
+  if (res === 'auth')      { accessToken = null; LSdel('accessToken'); }
+  if (res === 'forbidden') { handleBadSheet(); }
+  queueSync(entryObj);
+  return false;
+}
+
+// Stored sheet is inaccessible (e.g. old Apps-Script "Visits" sheet under
+// drive.file scope → 403). Forget it so we re-discover/create the right one.
+function handleBadSheet() {
+  console.warn('Sheet not accessible (403) — clearing stored sheetId to re-discover.');
+  sheetId = null;
+  LSdel('sheetId');
 }
 
 function queueSync(entry) {
-  pendingSync.push(entry);
+  if (!pendingSync.some(e => entryKey(e) === entryKey(entry))) pendingSync.push(entry);
   LSset('pendingSync', JSON.stringify(pendingSync));
   setSyncStatus('pending');
 }
@@ -1213,7 +1236,9 @@ function showApp() {
 // LOAD DATA FROM GOOGLE SHEET — syncs all devices
 // ═══════════════════════════════════════════════════════════
 async function loadFromSheet(silent = false) {
-  if (!accessToken || !sheetId) return;
+  if (!accessToken) return;
+  // Re-discover/create the sheet if we lost it (e.g. cleared after a 403).
+  if (!sheetId) { await ensureSheet(); if (!sheetId) return; }
   setSyncStatus('pending');
   if (!silent) showToast('☁️ Loading data from Google Sheets…', 2000);
   try {
@@ -1240,6 +1265,7 @@ async function loadFromSheet(silent = false) {
       const errBody = await r.json().catch(() => ({}));
       console.error('Sheet read error:', r.status, errBody);
       if (r.status === 401) { accessToken = null; LSdel('accessToken'); }
+      if (r.status === 403 || r.status === 404) { handleBadSheet(); }  // wrong/old sheet → re-discover next tick
       setSyncStatus('error');
       if (!silent) showToast(`❌ Sheet read failed (${r.status}). Tap 🔄 to retry.`, 4000);
       return;
@@ -1329,19 +1355,47 @@ function startAutoSync() {
   });
 }
 
-// Upload pendingSync entries to sheet
+// Upload pendingSync entries to the sheet — throttled, deduped, and
+// rate-limit-aware so we never flood the Sheets API (429).
+let isUploading = false;
 async function uploadPending(tabName) {
   tabName = tabName || 'Records';
-  if (pendingSync.length === 0) return;
-  const failed = [];
-  for (const e of pendingSync) {
-    const ok = await syncToSheet(e, tabName);
-    if (!ok) failed.push(e);
-  }
-  pendingSync = failed;
+  if (isUploading || !accessToken || !sheetId) return;
+
+  // Drop duplicates that piled up while the queue was failing.
+  const seen = new Set();
+  pendingSync = pendingSync.filter(e => {
+    const k = entryKey(e);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
   LSset('pendingSync', JSON.stringify(pendingSync));
-  if (failed.length === 0) { setSyncStatus('synced'); showToast('✅ All synced!', 2000); }
-  else showToast(`⚠️ ${failed.length} records still pending`, 3000);
+  if (pendingSync.length === 0) { setSyncStatus('synced'); return; }
+
+  isUploading = true;
+  const queue = [...pendingSync];
+  const remaining = [];
+  try {
+    for (let i = 0; i < queue.length; i++) {
+      const res = await appendRow(queue[i], tabName);
+      if (res === 'ok') { await sleep(350); continue; }   // gentle pacing
+      // Stop the whole run on these — keep this entry and everything after it.
+      if (res === 'rate' || res === 'auth' || res === 'forbidden') {
+        remaining.push(...queue.slice(i));
+        if (res === 'auth')      { accessToken = null; LSdel('accessToken'); }
+        if (res === 'forbidden') { handleBadSheet(); }
+        break;
+      }
+      remaining.push(queue[i]);  // transient 'fail' — retry later
+      await sleep(350);
+    }
+  } finally {
+    pendingSync = remaining;
+    LSset('pendingSync', JSON.stringify(pendingSync));
+    isUploading = false;
+  }
+  if (pendingSync.length === 0) { setSyncStatus('synced'); showToast('✅ All synced!', 2000); }
+  else { setSyncStatus('pending'); showToast(`⚠️ ${pendingSync.length} record(s) pending — will retry`, 3000); }
 }
 
 // ═══════════════════════════════════════════════════════════
