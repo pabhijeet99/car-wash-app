@@ -785,7 +785,7 @@
 // ═══════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata';
 const LS = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 const LSset = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const LSdel = (k) => { try { localStorage.removeItem(k); } catch {} };
@@ -885,21 +885,117 @@ async function onTokenResponse(resp) {
 // ═══════════════════════════════════════════════════════════
 // GOOGLE SHEETS — ensure "Car Wash Records" sheet exists
 // ═══════════════════════════════════════════════════════════
+const APPDATA_FILE = 'carwash-config.json';
+
+// Is this spreadsheet id readable by the current token?
+async function sheetAccessible(id) {
+  if (!id) return false;
+  try {
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=spreadsheetId`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+// ── Shared per-account pointer stored in Drive's hidden appDataFolder ──
+// Every device signed into the SAME Google account reads the same sheetId
+// from here, so the phone and PC converge on ONE sheet instead of each
+// creating its own (the cause of the diverging totals).
+async function findAppDataConfigId() {
+  try {
+    const q = encodeURIComponent(`name='${APPDATA_FILE}'`);
+    const r = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id)`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d.files && d.files[0]) ? d.files[0].id : null;
+  } catch { return null; }
+}
+
+async function readAppDataConfig() {
+  const id = await findAppDataConfigId();
+  if (!id) return null;
+  try {
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function writeAppDataConfig(obj) {
+  const body = JSON.stringify(obj);
+  const existingId = await findAppDataConfigId();
+  try {
+    if (existingId) {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body
+      });
+      return;
+    }
+    const boundary = 'cw' + Date.now();
+    const metadata = { name: APPDATA_FILE, parents: ['appDataFolder'] };
+    const multipart =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(metadata) +
+      `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+      body +
+      `\r\n--${boundary}--`;
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body: multipart
+    });
+  } catch (e) { console.warn('writeAppDataConfig failed (non-fatal):', e); }
+}
+
+async function createSheet() {
+  const r = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      properties: { title: SHEET_NAME },
+      sheets: [{
+        properties: { title: 'Records' },
+        data: [{ rowData: [{ values: [
+          'Date','Time','Customer Name','Phone','Vehicle No','Vehicle Model',
+          'Service Type','Amount (₹)','Staff','Notes'
+        ].map(v => ({ userEnteredValue: { stringValue: v } })) }] }]
+      }]
+    })
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  return d.spreadsheetId;
+}
+
 async function ensureSheet() {
   if (!accessToken) return;
-  const storedId = LS('sheetId', null);
 
-  if (storedId) {
-    // Verify it still exists and we can access it
-    try {
-      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${storedId}`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      });
-      if (r.ok) { sheetId = storedId; return; }
-    } catch {}
+  // 1) Locally cached id — fastest path, but verify it's still reachable.
+  const storedId = LS('sheetId', null);
+  if (await sheetAccessible(storedId)) {
+    sheetId = storedId;
+    await writeAppDataConfig({ sheetId, name: SHEET_NAME });  // make sure pointer exists
+    return;
   }
 
-  // Search Drive for existing "Car Wash Records" file
+  // 2) Shared pointer in Drive appData — this is what keeps all of this
+  //    account's devices on ONE sheet.
+  const cfg = await readAppDataConfig();
+  if (cfg && cfg.sheetId && await sheetAccessible(cfg.sheetId)) {
+    sheetId = cfg.sheetId;
+    LSset('sheetId', sheetId);
+    return;
+  }
+
+  // 3) Search this app's Drive files for an existing "Car Wash Records".
   try {
     const q = encodeURIComponent(`name='${SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
     const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
@@ -909,31 +1005,22 @@ async function ensureSheet() {
     if (data.files && data.files.length > 0) {
       sheetId = data.files[0].id;
       LSset('sheetId', sheetId);
+      await writeAppDataConfig({ sheetId, name: SHEET_NAME });
       return;
     }
   } catch {}
 
-  // Create new spreadsheet
+  // 4) Nothing found anywhere — create the sheet in the user's Drive, then
+  //    publish the pointer so other devices pick it up.
   try {
-    const r = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        properties: { title: SHEET_NAME },
-        sheets: [{
-          properties: { title: 'Records' },
-          data: [{ rowData: [{ values: [
-            'Date','Time','Customer Name','Phone','Vehicle No','Vehicle Model',
-            'Service Type','Amount (₹)','Staff','Notes'
-          ].map(v => ({ userEnteredValue: { stringValue: v } })) }] }]
-        }]
-      })
-    });
-    if (r.ok) {
-      const d = await r.json();
-      sheetId = d.spreadsheetId;
+    const newId = await createSheet();
+    if (newId) {
+      sheetId = newId;
       LSset('sheetId', sheetId);
+      await writeAppDataConfig({ sheetId, name: SHEET_NAME });
       showToast(`✅ "${SHEET_NAME}" created in your Google Drive`, 3000);
+    } else {
+      showToast('Could not create sheet — tap 🔄 to retry', 4000);
     }
   } catch (e) { showToast('Could not create sheet: ' + e.message, 4000); }
 }

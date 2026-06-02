@@ -1,6 +1,6 @@
 // ── BUMP THIS VERSION every time you push an update ──
 // Clients will see an "Update Available" banner automatically.
-const VERSION = 'carwash-v8';
+const VERSION = 'carwash-v9';
 const ASSETS = ['./', './index.html', './manifest.json', './sw.js'];
 
 self.addEventListener('install', e => {
