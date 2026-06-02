@@ -1,7 +1,8 @@
 {
   "name": "Car Wash Manager",
   "short_name": "CarWash",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#0a0f1e",
   "theme_color": "#0f172a",
