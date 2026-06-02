@@ -875,6 +875,7 @@ async function onTokenResponse(resp) {
 
   // Get or create sheet
   await ensureSheet();
+  startAutoSync();
 
   const hasPin = LS('pin_hash', null);
   if (hasPin) showPinLogin();
@@ -1204,15 +1205,17 @@ function showApp() {
   } else if (pendingSync.length > 0 && accessToken) {
     setTimeout(manualSync, 2000);
   }
+  // Keep this device auto-synced with the sheet from here on
+  startAutoSync();
 }
 
 // ═══════════════════════════════════════════════════════════
 // LOAD DATA FROM GOOGLE SHEET — syncs all devices
 // ═══════════════════════════════════════════════════════════
-async function loadFromSheet() {
+async function loadFromSheet(silent = false) {
   if (!accessToken || !sheetId) return;
   setSyncStatus('pending');
-  showToast('☁️ Loading data from Google Sheets…', 2000);
+  if (!silent) showToast('☁️ Loading data from Google Sheets…', 2000);
   try {
     // First get the actual sheet tab name (it might not be "Records")
     let tabName = 'Records';
@@ -1238,7 +1241,7 @@ async function loadFromSheet() {
       console.error('Sheet read error:', r.status, errBody);
       if (r.status === 401) { accessToken = null; LSdel('accessToken'); }
       setSyncStatus('error');
-      showToast(`❌ Sheet read failed (${r.status}). Tap 🔄 to retry.`, 4000);
+      if (!silent) showToast(`❌ Sheet read failed (${r.status}). Tap 🔄 to retry.`, 4000);
       return;
     }
 
@@ -1247,7 +1250,7 @@ async function loadFromSheet() {
 
     if (rows.length === 0) {
       setSyncStatus('synced');
-      showToast('✅ Sheet is empty — add your first entry!', 2500);
+      if (!silent) showToast('✅ Sheet is empty — add your first entry!', 2500);
       if (pendingSync.length > 0) setTimeout(() => uploadPending(tabName), 500);
       return;
     }
@@ -1286,17 +1289,44 @@ async function loadFromSheet() {
     LSset('entries', JSON.stringify(entries));
     setSyncStatus('synced');
     refreshHome();
-    showToast(`✅ Loaded ${sheetEntries.length} record${sheetEntries.length !== 1 ? 's' : ''}`, 2500);
+    if (!silent) showToast(`✅ Loaded ${sheetEntries.length} record${sheetEntries.length !== 1 ? 's' : ''}`, 2500);
 
     if (uniqueLocal.length > 0) {
-      showToast(`Uploading ${uniqueLocal.length} local record(s)…`, 2000);
+      if (!silent) showToast(`Uploading ${uniqueLocal.length} local record(s)…`, 2000);
       setTimeout(() => uploadPending(tabName), 1000);
     }
   } catch (e) {
     console.error('loadFromSheet error:', e);
     setSyncStatus('error');
-    showToast('❌ Sync error: ' + e.message, 4000);
+    if (!silent) showToast('❌ Sync error: ' + e.message, 4000);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-SYNC — keep every device (phone app + PC) up to date
+// Polls the sheet on a timer and whenever the app regains focus,
+// so totals stay in sync without tapping the 🔄 button.
+// ═══════════════════════════════════════════════════════════
+let autoSyncTimer = null;
+const AUTO_SYNC_MS = 20000; // 20s
+
+function startAutoSync() {
+  if (autoSyncTimer) return;
+  autoSyncTimer = setInterval(() => {
+    if (accessToken && sheetId && !document.hidden) {
+      loadFromSheet(true);
+    }
+  }, AUTO_SYNC_MS);
+
+  // Refresh immediately when the app comes back to the foreground
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && accessToken && sheetId) loadFromSheet(true);
+  });
+
+  // Flush any queued offline entries as soon as we're back online
+  window.addEventListener('online', () => {
+    if (accessToken && sheetId) loadFromSheet(true);
+  });
 }
 
 // Upload pendingSync entries to sheet
