@@ -1,997 +1,1440 @@
-bash
-
-cat > /mnt/user-data/outputs/car-wash-app/index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<meta name="theme-color" content="#0a0f1e"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-title" content="CarWash"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f172a">
 <title>Car Wash Manager</title>
-<link rel="manifest" href="manifest.json"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════
+     HARDCODED GOOGLE CLIENT ID — replace with your own from
+     Google Cloud Console → APIs & Services → Credentials
+     Authorized JS origins must include your GitHub Pages URL.
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+  const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+  const SHEET_NAME = 'Car Wash Records';
+</script>
+
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0f1e;--bg2:#111827;--bg3:#1f2937;--card:#161d2e;--card2:#1a2236;
-  --border:#1f2d45;--border2:#2d3f5a;
-  --sky:#38bdf8;--sky2:#0ea5e9;--green:#34d399;--amber:#fbbf24;
-  --violet:#a78bfa;--rose:#fb7185;--indigo:#818cf8;
-  --text:#f0f6ff;--text2:#8ba3c7;--text3:#4a6080;
-  --r:16px;--r-sm:10px;--r-xs:8px;
-  --sh:0 8px 32px rgba(0,0,0,.5);
-  --f:'Plus Jakarta Sans',sans-serif;
-}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f);font-size:15px;line-height:1.5;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
-button{cursor:pointer;border:none;outline:none;font-family:var(--f)}
-input,select,textarea{font-family:var(--f);outline:none;color:var(--text)}
+  :root {
+    --bg:      #0a0f1e;
+    --surface: #111827;
+    --card:    #1a2235;
+    --border:  #1e2d45;
+    --accent:  #3b82f6;
+    --accent2: #06b6d4;
+    --green:   #10b981;
+    --amber:   #f59e0b;
+    --red:     #ef4444;
+    --text:    #f1f5f9;
+    --muted:   #64748b;
+    --radius:  14px;
+  }
 
-/* SCREENS */
-.scr{display:none;min-height:100dvh}
-.scr.on{display:flex;flex-direction:column}
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-/* ── SETUP URL SCREEN ─────────────────── */
-#scr-url{
-  align-items:center;justify-content:center;padding:28px 20px;
-  background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(56,189,248,.12),transparent),var(--bg)
-}
-.url-inner{width:100%;max-width:440px}
-.url-logo{font-size:60px;text-align:center;margin-bottom:10px;animation:bobble 3s ease-in-out infinite}
-@keyframes bobble{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.url-title{font-size:26px;font-weight:800;text-align:center;margin-bottom:6px}
-.url-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:28px;line-height:1.6}
-.url-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 18px;margin-bottom:14px}
-.url-card-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px}
-.step-list{display:flex;flex-direction:column;gap:11px}
-.step-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text2);line-height:1.6}
-.step-num{background:var(--sky);color:#061624;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px}
-.step-item a{color:var(--sky)}
-.step-item strong{color:var(--text)}
-.note-box{font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xs);padding:10px 12px;margin-top:8px}
-.note-box strong{color:var(--sky)}
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
 
-/* ── EMAIL SCREEN ─────────────────────── */
-#scr-email{
-  align-items:center;justify-content:center;padding:28px 20px;
-  background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(56,189,248,.1),transparent),var(--bg)
-}
-.email-inner{width:100%;max-width:400px;text-align:center}
-.email-logo{font-size:56px;margin-bottom:10px}
-.email-title{font-size:24px;font-weight:800;margin-bottom:6px}
-.email-sub{font-size:13px;color:var(--text2);margin-bottom:28px;line-height:1.6}
-.email-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 18px;text-align:left}
+  /* ── SCREENS ── */
+  .screen { display: none; min-height: 100dvh; flex-direction: column; }
+  .screen.active { display: flex; }
 
-/* ── PIN SCREEN ───────────────────────── */
-#scr-pin{
-  align-items:center;justify-content:center;padding:28px 20px;
-  background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(56,189,248,.1),transparent),var(--bg)
-}
-.pin-wrap{width:100%;max-width:340px;text-align:center}
-.pin-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--sky2));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 12px;box-shadow:0 0 0 6px rgba(56,189,248,.12)}
-.pin-name{font-size:19px;font-weight:800;margin-bottom:3px}
-.pin-email{font-size:12px;color:var(--text2);margin-bottom:24px;word-break:break-all}
-.pin-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 18px;box-shadow:var(--sh)}
-.pin-card-ttl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:10px}
-.dot{width:14px;height:14px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);transition:all .18s}
-.dot.on{background:var(--sky);border-color:var(--sky);transform:scale(1.2)}
-.dot.err{background:var(--rose);border-color:var(--rose)}
-.pin-err{color:var(--rose);font-size:12px;min-height:16px;margin-bottom:10px}
-.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.key{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xs);padding:14px 0;font-size:19px;font-weight:700;color:var(--text);transition:background .12s,transform .1s;font-family:var(--f)}
-.key:active{background:var(--bg3);transform:scale(.93)}
-.key-blank{background:transparent;border-color:transparent;pointer-events:none}
-.key-del{font-size:15px;color:var(--text2)}
-.pin-switch{margin-top:14px;color:var(--sky);font-size:12px;font-weight:600;background:none}
+  /* ── LOADING ── */
+  #screen-loading {
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+  .logo-wrap { text-align: center; }
+  .logo-icon { font-size: 64px; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .logo-title { font-size: 28px; font-weight: 800; margin-top: 16px; letter-spacing: -0.5px; }
+  .logo-sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 32px auto 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-/* FORM ELEMENTS */
-.fg{margin-bottom:14px}
-.fg label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
-.fg input,.fg select,.fg textarea{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r-xs);padding:12px 14px;font-size:14px;transition:border-color .2s}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--sky)}
-.fg select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%238ba3c7' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-.fg textarea{resize:vertical;min-height:74px}
-.fg input.uc{text-transform:uppercase}
-.req{color:var(--sky);margin-left:2px}
+  /* ── SIGN-IN ── */
+  #screen-signin {
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: radial-gradient(ellipse at top, #0f2040 0%, var(--bg) 70%);
+  }
+  .signin-hero { text-align: center; margin-bottom: 48px; }
+  .signin-hero .logo-icon { font-size: 72px; }
+  .signin-hero h1 { font-size: 32px; font-weight: 800; margin-top: 20px; }
+  .signin-hero p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+  .feature-list {
+    width: 100%; background: var(--card); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 32px; border: 1px solid var(--border);
+  }
+  .feature-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; font-size: 14px;
+  }
+  .feature-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .feat-icon { font-size: 20px; }
+  #google-signin-btn {
+    width: 100%; background: white; color: #1f2937;
+    border: none; border-radius: 10px; padding: 14px 24px;
+    font-size: 15px; font-weight: 600; font-family: 'Outfit', sans-serif;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 10px; transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  #google-signin-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(0,0,0,0.5); }
+  #google-signin-btn:active { transform: scale(0.98); }
+  .google-g { font-size: 18px; }
+  .signin-note { color: var(--muted); font-size: 12px; text-align: center; margin-top: 12px; }
 
-/* BUTTONS */
-.btn{display:block;width:100%;padding:14px;border-radius:var(--r-xs);font-size:14px;font-weight:700;transition:opacity .15s,transform .1s;margin-top:6px;font-family:var(--f);letter-spacing:.2px}
-.btn:active{opacity:.82;transform:scale(.98)}
-.btn-p{background:linear-gradient(135deg,var(--sky),var(--sky2));color:#061624}
-.btn-s{background:transparent;border:1.5px solid var(--border2);color:var(--text2)}
-.btn-d{background:rgba(251,113,133,.1);border:1.5px solid rgba(251,113,133,.25);color:var(--rose)}
-.btn-row{display:flex;gap:8px;margin-top:6px}
-.btn-row .btn{margin-top:0}
+  /* ── PIN SETUP ── */
+  #screen-pin-setup, #screen-pin-login {
+    align-items: center; justify-content: center; padding: 32px 24px;
+  }
+  .pin-header { text-align: center; margin-bottom: 40px; }
+  .pin-header h2 { font-size: 24px; font-weight: 700; }
+  .pin-header p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+  .pin-user-info {
+    background: var(--card); border-radius: 12px; padding: 12px 20px;
+    margin-bottom: 32px; text-align: center; border: 1px solid var(--border);
+    font-size: 13px; color: var(--muted);
+  }
+  .pin-user-info strong { color: var(--text); font-weight: 600; }
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+  .pin-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border); transition: all 0.2s;
+  }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; width: 100%; max-width: 280px; }
+  .pin-key {
+    aspect-ratio: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+  .pin-key:active { background: var(--accent); transform: scale(0.93); }
+  .pin-key.del { background: transparent; font-size: 18px; }
+  .pin-key.action { background: var(--accent); color: white; font-size: 14px; font-weight: 700; }
+  .pin-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
+  .pin-forgot { color: var(--accent); font-size: 13px; margin-top: 20px; cursor: pointer; text-decoration: underline; }
 
-/* APP SHELL */
-#app{height:100dvh;display:none;flex-direction:column}
-#app.on{display:flex}
-.hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(10,15,30,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;flex-shrink:0}
-.hdr-back{width:34px;height:34px;border-radius:var(--r-xs);background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:17px;flex-shrink:0}
-.hdr-back.hide{opacity:0;pointer-events:none}
-.hdr-title{font-size:16px;font-weight:800;flex:1}
-.hdr-user{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--violet));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;cursor:pointer;border:2px solid var(--border2)}
+  /* ── MAIN APP ── */
+  #screen-app { padding-bottom: 80px; }
+  .topbar {
+    background: var(--surface); padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-title { font-size: 18px; font-weight: 700; }
+  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .topbar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 8px; background: var(--card);
+    border: 1px solid var(--border); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.15s;
+  }
+  .icon-btn:active { background: var(--accent); }
 
-.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:74px}
-::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px; background: var(--surface);
+    border-top: 1px solid var(--border); display: flex; z-index: 20;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 10px 4px; cursor: pointer; gap: 4px; transition: color 0.15s;
+    color: var(--muted); font-size: 10px; font-weight: 500;
+  }
+  .nav-icon { font-size: 20px; }
+  .nav-item.active { color: var(--accent); }
+  .nav-item.active .nav-icon { filter: drop-shadow(0 0 6px rgba(59,130,246,0.6)); }
 
-.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,15,30,.97);backdrop-filter:blur(16px);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100}
-.nb{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;color:var(--text3);font-size:10px;font-weight:600;padding:6px 2px;transition:color .2s;font-family:var(--f);letter-spacing:.3px;text-transform:uppercase}
-.nb .ni{font-size:18px;transition:transform .2s}
-.nb.on{color:var(--sky)}.nb.on .ni{transform:scale(1.18)}
+  /* ── PAGES ── */
+  .page { display: none; padding: 20px; }
+  .page.active { display: block; }
 
-/* PAGES */
-.pg{display:none;padding:16px}.pg.on{display:block}
+  /* ── SECTION HEADINGS ── */
+  .section-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
 
-/* HOME */
-.hero{background:linear-gradient(135deg,#0d1f3a,#0a1628);border:1px solid rgba(56,189,248,.18);border-radius:18px;padding:18px 16px;margin-bottom:14px;position:relative;overflow:hidden}
-.hero::after{content:'💧';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:44px;opacity:.15}
-.hero-biz{font-size:19px;font-weight:800;margin-bottom:2px}
-.hero-sub{font-size:13px;color:var(--sky);font-weight:500}
-.sync-row{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.18);color:var(--sky)}
-.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
-.sdot.spin{background:var(--amber);animation:pulse .4s ease-in-out infinite}
-.sdot.err{background:var(--rose);animation:none}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  /* ── KPI GRID ── */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .kpi-card {
+    background: var(--card); border-radius: var(--radius); padding: 16px;
+    border: 1px solid var(--border); position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .kpi-card.blue::before { background: var(--accent); }
+  .kpi-card.cyan::before { background: var(--accent2); }
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.amber::before { background: var(--amber); }
+  .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .kpi-value { font-size: 24px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kpi-wide { grid-column: span 2; }
 
-.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 12px;position:relative;overflow:hidden}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r) var(--r) 0 0}
-.kpi.sky::before{background:linear-gradient(90deg,var(--sky),var(--sky2))}
-.kpi.green::before{background:linear-gradient(90deg,var(--green),#10b981)}
-.kpi.amber::before{background:linear-gradient(90deg,var(--amber),#f59e0b)}
-.kpi.violet::before{background:linear-gradient(90deg,var(--violet),#8b5cf6)}
-.kpi.rose::before{background:linear-gradient(90deg,var(--rose),#f43f5e)}
-.kpi.indigo::before{background:linear-gradient(90deg,var(--indigo),#6366f1)}
-.kpi.full{grid-column:1/-1}
-.kpi-ico{font-size:17px;margin-bottom:5px}
-.kpi-val{font-size:21px;font-weight:800;line-height:1;margin-bottom:2px}
-.kpi-val.sm{font-size:16px}
-.kpi-lbl{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+  /* ── QUICK ACTIONS ── */
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .qa-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 14px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: all 0.15s; font-size: 14px; font-weight: 600;
+  }
+  .qa-btn:active { background: var(--accent); border-color: var(--accent); }
+  .qa-btn.primary { background: var(--accent); border-color: var(--accent); color: white; grid-column: span 2; justify-content: center; font-size: 16px; }
+  .qa-icon { font-size: 22px; }
 
-.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.act{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;transition:border-color .2s,background .15s}
-.act:active{background:var(--card2)}
-.act-ico{font-size:26px;margin-bottom:7px}
-.act-lbl{font-size:13px;font-weight:700;margin-bottom:2px}
-.act-desc{font-size:11px;color:var(--text2)}
+  /* ── RECENT ENTRIES ── */
+  .entry-card {
+    background: var(--card); border-radius: var(--radius); padding: 14px 16px;
+    border: 1px solid var(--border); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .entry-avatar {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .entry-amount { font-weight: 700; font-size: 15px; color: var(--green); }
 
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.sec-ttl{font-size:14px;font-weight:800}
-.sec-lnk{font-size:12px;font-weight:600;color:var(--sky)}
-.rec-list{display:flex;flex-direction:column;gap:8px}
-.rec-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;display:flex;align-items:center;gap:11px}
-.rec-av{width:36px;height:36px;border-radius:9px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.15);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.rec-info{flex:1;min-width:0}
-.rec-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rec-meta{font-size:11px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rec-amt{font-weight:800;font-size:13px;color:var(--green);flex-shrink:0}
-.empty{text-align:center;padding:24px 12px;color:var(--text2)}
-.empty-ico{font-size:34px;margin-bottom:8px}.empty p{font-size:13px}
+  /* ── FORMS ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 6px; display: block; text-transform: uppercase; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text);
+    font-size: 15px; font-family: 'Outfit', sans-serif; outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-select option { background: var(--surface); }
+  .form-textarea { resize: none; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* FORM PAGE */
-.fsec{font-size:11px;font-weight:700;color:var(--sky);text-transform:uppercase;letter-spacing:1px;margin:16px 0 11px;display:flex;align-items:center;gap:6px}
-.fsec:first-child{margin-top:0}
-.fsec::before{content:'';display:inline-block;width:3px;height:11px;background:var(--sky);border-radius:2px}
+  /* ── BUTTONS ── */
+  .btn {
+    width: 100%; padding: 14px; border-radius: 10px; border: none;
+    font-size: 16px; font-weight: 700; font-family: 'Outfit', sans-serif;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
 
-/* SEARCH */
-.stabs{display:flex;background:var(--bg2);border-radius:var(--r-xs);padding:3px;gap:3px;margin-bottom:12px}
-.stab{flex:1;padding:9px;border-radius:6px;font-size:12px;font-weight:700;background:none;color:var(--text2);font-family:var(--f);transition:all .18s}
-.stab.on{background:var(--sky);color:#061624}
-.s-row{display:flex;gap:8px;margin-bottom:14px}
-.s-inp{flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r-xs);padding:12px 13px;color:var(--text);font-size:14px}
-.s-inp:focus{border-color:var(--sky)}
-.s-btn{background:linear-gradient(135deg,var(--sky),var(--sky2));border-radius:var(--r-xs);padding:0 17px;font-size:17px;color:#061624;flex-shrink:0}
-.res-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:15px;margin-bottom:10px}
-.res-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:11px}
-.res-name{font-size:15px;font-weight:800}.res-date{font-size:11px;color:var(--text2);margin-top:2px}
-.res-badge{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:var(--green);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:800;flex-shrink:0}
-.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.res-f{background:var(--bg2);border-radius:6px;padding:7px 10px}
-.res-fl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
-.res-fv{font-size:13px;font-weight:600}
-.res-note{margin-top:7px;background:var(--bg2);border-radius:6px;padding:7px 10px}
+  /* ── SEARCH ── */
+  .search-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px 12px 40px; width: 100%; color: var(--text);
+    font-size: 15px; font-family: 'Outfit', sans-serif; outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-bar:focus { border-color: var(--accent); }
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; }
 
-/* ANALYTICS */
-.bar-wrap{display:flex;flex-direction:column;gap:8px}
-.bar-row{display:flex;align-items:center;gap:8px}
-.bar-lbl{font-size:11px;color:var(--text2);width:80px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-track{flex:1;background:var(--bg2);border-radius:4px;height:8px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--sky),var(--sky2));transition:width .6s ease}
-.bar-val{font-size:11px;font-weight:700;width:48px;flex-shrink:0;text-align:right}
+  /* ── ANALYTICS CHARTS ── */
+  .chart-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .chart-label { font-size: 12px; color: var(--muted); width: 90px; flex-shrink: 0; text-align: right; }
+  .chart-bar-wrap { flex: 1; background: var(--border); border-radius: 4px; height: 20px; overflow: hidden; }
+  .chart-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.6s ease; }
+  .chart-val { font-size: 12px; font-weight: 600; width: 60px; flex-shrink: 0; }
 
-/* SETTINGS */
-.sset{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:11px}
-.sset-ttl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:13px}
-.profile-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:11px}
-.profile-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--violet));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
-.profile-name{font-size:14px;font-weight:700}
-.profile-email{font-size:11px;color:var(--text2);margin-top:1px;word-break:break-all}
-.sheet-info{display:flex;align-items:center;gap:8px;padding:9px 11px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.18);border-radius:var(--r-xs);font-size:12px;color:var(--green);font-weight:600;margin-bottom:10px}
-.sheet-info a{color:var(--sky);text-decoration:none;font-size:11px;margin-left:auto;font-weight:600}
+  /* ── SETTINGS ── */
+  .settings-section { margin-bottom: 24px; }
+  .settings-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 8px; display: flex; align-items: center;
+    justify-content: space-between; cursor: pointer;
+  }
+  .settings-item:active { background: var(--border); }
+  .settings-item-left { display: flex; align-items: center; gap: 14px; }
+  .settings-icon { font-size: 20px; }
+  .settings-label { font-size: 14px; font-weight: 600; }
+  .settings-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .settings-chevron { color: var(--muted); }
 
-/* TOAST & LOADER */
-.toast{position:fixed;bottom:82px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text);box-shadow:var(--sh);z-index:9999;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.ok{border-color:rgba(52,211,153,.35);color:var(--green)}
-.toast.er{border-color:rgba(251,113,133,.35);color:var(--rose)}
-.ldr{position:fixed;inset:0;background:rgba(10,15,30,.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9998}
-.ldr-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px 28px;text-align:center;min-width:180px}
-.spin{width:34px;height:34px;border:3px solid var(--border2);border-top-color:var(--sky);border-radius:50%;animation:sp .6s linear infinite;margin:0 auto 12px}
-@keyframes sp{to{transform:rotate(360deg)}}
-.ldr-txt{color:var(--text2);font-size:13px;font-weight:500}
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 100; align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 28px 24px 40px; width: 100%; max-width: 480px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(40px); } to { transform: translateY(0); } }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .modal-close { float: right; cursor: pointer; color: var(--muted); font-size: 20px; }
 
-/* MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(10,15,30,.9);backdrop-filter:blur(8px);z-index:8000;display:none;align-items:flex-end;justify-content:center;padding:14px}
-.modal-bg.on{display:flex}
-.modal{background:var(--card);border:1px solid var(--border2);border-radius:22px 22px 18px 18px;padding:22px 18px;width:100%;max-width:420px}
-.modal-ttl{font-size:17px;font-weight:800;margin-bottom:5px}
-.modal-sub{font-size:13px;color:var(--text2);margin-bottom:18px}
-.div{height:1px;background:var(--border);margin:13px 0}
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1e293b; color: var(--text); padding: 12px 24px;
+    border-radius: 24px; font-size: 14px; font-weight: 500; z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); opacity: 0; transition: all 0.25s;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── SYNC INDICATOR ── */
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sync-dot.synced { background: var(--green); }
+  .sync-dot.pending { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .empty-sub { font-size: 14px; margin-top: 8px; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 3px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; background: var(--accent); color: white;
+  }
+  .badge.green { background: var(--green); }
+  .badge.amber { background: var(--amber); color: #0f172a; }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 </style>
 </head>
 <body>
 
-<!-- ══ SETUP URL SCREEN ════════════════════ -->
-<div id="scr-url" class="scr">
-  <div class="url-inner">
-    <div class="url-logo">🚗💧</div>
-    <h1 class="url-title">One-time Setup</h1>
-    <p class="url-sub">Deploy your Apps Script backend once.<br/>All your clients connect to it automatically.</p>
-
-    <div class="url-card">
-      <div class="url-card-title">📋 Steps (you do this once)</div>
-      <div class="step-list">
-        <div class="step-item"><span class="step-num">1</span><span>Go to <a href="https://script.google.com" target="_blank">script.google.com</a> → New project</span></div>
-        <div class="step-item"><span class="step-num">2</span><span>Paste the <strong>Code.gs</strong> content from this package, save</span></div>
-        <div class="step-item"><span class="step-num">3</span><span><strong>Deploy → New deployment</strong> → Type: Web app<br/>Execute as: <strong>Me</strong> · Access: <strong>Anyone</strong></span></div>
-        <div class="step-item"><span class="step-num">4</span><span>Copy the <strong>Web app URL</strong> and paste below</span></div>
-      </div>
-    </div>
-
-    <div class="fg">
-      <label>Apps Script Web App URL <span class="req">*</span></label>
-      <input type="url" id="url-inp" placeholder="https://script.google.com/macros/s/.../exec"/>
-      <div class="note-box">Looks like: <strong>https://script.google.com/macros/s/AKfy.../exec</strong></div>
-    </div>
-    <button class="btn btn-p" onclick="saveURL()">Save & Continue →</button>
+<!-- ══════════ LOADING SCREEN ══════════ -->
+<div id="screen-loading" class="screen active">
+  <div class="logo-wrap">
+    <div class="logo-icon">🚗</div>
+    <div class="logo-title">Car Wash Manager</div>
+    <div class="logo-sub">Business Tracking App</div>
+    <div class="spinner"></div>
   </div>
 </div>
 
-<!-- ══ EMAIL SCREEN ════════════════════════ -->
-<div id="scr-email" class="scr">
-  <div class="email-inner">
-    <div class="email-logo">📧</div>
-    <h2 class="email-title">Enter Your Email</h2>
-    <p class="email-sub">Your entries will be stored in a private tab inside the <strong>"Car Wash Data"</strong> Google Sheet — organised by your email.</p>
-    <div class="email-card">
-      <div class="fg">
-        <label>Your Gmail / Email <span class="req">*</span></label>
-        <input type="email" id="email-inp" placeholder="yourname@gmail.com"/>
-      </div>
-      <div class="fg">
-        <label>Your Name</label>
-        <input type="text" id="name-inp" placeholder="e.g. Rajesh Kumar"/>
-      </div>
-      <div class="fg">
-        <label>Business Name</label>
-        <input type="text" id="biz-inp" placeholder="e.g. Raju Car Wash"/>
-      </div>
-      <button class="btn btn-p" style="margin-top:8px" onclick="saveEmail()">Next: Set PIN →</button>
+<!-- ══════════ SIGN-IN SCREEN ══════════ -->
+<div id="screen-signin" class="screen">
+  <div class="signin-hero">
+    <div class="logo-icon">🚗</div>
+    <h1>Car Wash Manager</h1>
+    <p>Sign in to save data to your Google Drive</p>
+  </div>
+  <div class="feature-list">
+    <div class="feature-item"><span class="feat-icon">📊</span> Data saved in your Google Drive</div>
+    <div class="feature-item"><span class="feat-icon">🔒</span> PIN protected access</div>
+    <div class="feature-item"><span class="feat-icon">📱</span> Works offline, syncs when online</div>
+    <div class="feature-item"><span class="feat-icon">📈</span> KPIs & revenue insights</div>
+  </div>
+  <button id="google-signin-btn">
+    <span class="google-g">G</span> Sign in with Google
+  </button>
+  <p class="signin-note">Your data goes to YOUR Google account — nobody else can see it.</p>
+</div>
+
+<!-- ══════════ PIN SETUP SCREEN ══════════ -->
+<div id="screen-pin-setup" class="screen">
+  <div style="width:100%;max-width:320px;margin:0 auto;">
+    <div class="pin-header">
+      <div style="font-size:48px;margin-bottom:12px;">🔐</div>
+      <h2 id="pin-setup-title">Set your PIN</h2>
+      <p id="pin-setup-sub">Choose a 4-digit PIN to protect access</p>
     </div>
+    <div class="pin-user-info" id="pin-setup-user"></div>
+    <div class="pin-dots" id="pin-setup-dots" style="justify-content:center;">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-keypad" style="margin:0 auto;">
+      <div class="pin-key" onclick="pinKey('setup',1)">1</div>
+      <div class="pin-key" onclick="pinKey('setup',2)">2</div>
+      <div class="pin-key" onclick="pinKey('setup',3)">3</div>
+      <div class="pin-key" onclick="pinKey('setup',4)">4</div>
+      <div class="pin-key" onclick="pinKey('setup',5)">5</div>
+      <div class="pin-key" onclick="pinKey('setup',6)">6</div>
+      <div class="pin-key" onclick="pinKey('setup',7)">7</div>
+      <div class="pin-key" onclick="pinKey('setup',8)">8</div>
+      <div class="pin-key" onclick="pinKey('setup',9)">9</div>
+      <div class="pin-key del" onclick="pinDel('setup')">⌫</div>
+      <div class="pin-key" onclick="pinKey('setup',0)">0</div>
+      <div class="pin-key del" style="color:var(--muted)" onclick="pinClear('setup')">✕</div>
+    </div>
+    <div class="pin-error" id="pin-setup-error"></div>
   </div>
 </div>
 
-<!-- ══ PIN SETUP SCREEN ════════════════════ -->
-<div id="scr-setpin" class="scr">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:28px 20px;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(56,189,248,.1),transparent),var(--bg)">
-    <div style="width:100%;max-width:340px;text-align:center">
-      <div style="font-size:48px;margin-bottom:10px">🔐</div>
-      <div style="font-size:22px;font-weight:800;margin-bottom:5px">Set Your PIN</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:24px" id="setpin-sub">Create a 4-digit PIN for quick access</div>
-      <div class="pin-card">
-        <div class="pin-dots" id="setpin-dots">
-          <span class="dot" id="spd0"></span><span class="dot" id="spd1"></span>
-          <span class="dot" id="spd2"></span><span class="dot" id="spd3"></span>
+<!-- ══════════ PIN LOGIN SCREEN ══════════ -->
+<div id="screen-pin-login" class="screen">
+  <div style="width:100%;max-width:320px;margin:0 auto;">
+    <div class="pin-header">
+      <div style="font-size:48px;margin-bottom:12px;">🔑</div>
+      <h2>Enter PIN</h2>
+      <p>Welcome back!</p>
+    </div>
+    <div class="pin-user-info" id="pin-login-user"></div>
+    <div class="pin-dots" id="pin-login-dots" style="justify-content:center;">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-keypad" style="margin:0 auto;">
+      <div class="pin-key" onclick="pinKey('login',1)">1</div>
+      <div class="pin-key" onclick="pinKey('login',2)">2</div>
+      <div class="pin-key" onclick="pinKey('login',3)">3</div>
+      <div class="pin-key" onclick="pinKey('login',4)">4</div>
+      <div class="pin-key" onclick="pinKey('login',5)">5</div>
+      <div class="pin-key" onclick="pinKey('login',6)">6</div>
+      <div class="pin-key" onclick="pinKey('login',7)">7</div>
+      <div class="pin-key" onclick="pinKey('login',8)">8</div>
+      <div class="pin-key" onclick="pinKey('login',9)">9</div>
+      <div class="pin-key del" onclick="pinDel('login')">⌫</div>
+      <div class="pin-key" onclick="pinKey('login',0)">0</div>
+      <div class="pin-key del" style="color:var(--muted)" onclick="pinClear('login')">✕</div>
+    </div>
+    <div class="pin-error" id="pin-login-error"></div>
+    <div class="pin-forgot" onclick="forgotPin()">Forgot PIN? Sign out & sign in again</div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="screen-app" class="screen">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sub" id="topbar-user">Loading…</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="icon-btn" id="sync-btn" onclick="manualSync()" title="Sync">🔄</div>
+    </div>
+  </div>
+
+  <!-- HOME PAGE -->
+  <div id="page-home" class="page active">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="section-title" style="margin:0;">Today's Overview</div>
+      <div class="sync-badge">
+        <div class="sync-dot synced" id="sync-indicator"></div>
+        <span id="sync-label">Synced</span>
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Today's Vehicles</div>
+        <div class="kpi-value" id="kpi-today-vehicles">—</div>
+        <div class="kpi-sub">washes today</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Today's Revenue</div>
+        <div class="kpi-value" id="kpi-today-revenue">—</div>
+        <div class="kpi-sub">earned today</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Total Vehicles</div>
+        <div class="kpi-value" id="kpi-total-vehicles">—</div>
+        <div class="kpi-sub">all time</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value" id="kpi-total-revenue">—</div>
+        <div class="kpi-sub">all time</div>
+      </div>
+      <div class="kpi-card blue kpi-wide">
+        <div class="kpi-label">Top Service</div>
+        <div class="kpi-value" id="kpi-top-service" style="font-size:16px;margin-top:8px;">—</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section-title">Quick Actions</div>
+    <div class="quick-actions">
+      <button class="qa-btn primary" onclick="navTo('new')">
+        <span class="qa-icon">➕</span> New Entry
+      </button>
+      <button class="qa-btn" onclick="navTo('search')">
+        <span class="qa-icon">🔍</span> Search
+      </button>
+      <button class="qa-btn" onclick="navTo('analytics')">
+        <span class="qa-icon">📊</span> Analytics
+      </button>
+    </div>
+
+    <!-- Recent Entries -->
+    <div class="section-title">Recent Entries</div>
+    <div id="recent-list">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No entries yet</div>
+        <div class="empty-sub">Add your first wash record</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW ENTRY PAGE -->
+  <div id="page-new" class="page">
+    <div class="section-title">Customer Details</div>
+    <div class="form-group">
+      <label class="form-label">Customer Name *</label>
+      <input class="form-input" id="f-name" placeholder="Full name" type="text">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-input" id="f-phone" placeholder="10-digit number" type="tel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vehicle No.</label>
+        <input class="form-input" id="f-vehicle" placeholder="MH01AB1234" type="text" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Vehicle Model</label>
+      <input class="form-input" id="f-model" placeholder="e.g. Maruti Swift" type="text">
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Service Details</div>
+
+    <div class="form-group">
+      <label class="form-label">Service Type *</label>
+      <select class="form-select" id="f-service">
+        <option value="">Select service…</option>
+        <option>Exterior Wash</option>
+        <option>Interior Wash</option>
+        <option>Full Wash</option>
+        <option>Foam Wash</option>
+        <option>Pressure Wash</option>
+        <option>Waxing & Polish</option>
+        <option>Vacuum Cleaning</option>
+        <option>Full Detailing</option>
+        <option>Engine Wash</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount (₹) *</label>
+        <input class="form-input" id="f-amount" placeholder="500" type="number" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Staff Name</label>
+        <input class="form-input" id="f-staff" placeholder="Who did it?" type="text">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" id="f-notes" placeholder="Any additional notes…"></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveEntry()">💾 Save Entry</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-outline" onclick="navTo('home')">Cancel</button>
+  </div>
+
+  <!-- SEARCH PAGE -->
+  <div id="page-search" class="page">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-bar" id="search-input" placeholder="Search by phone, vehicle, or name…"
+        oninput="doSearch(this.value)" type="search">
+    </div>
+    <div class="section-title" id="search-count">Type to search records</div>
+    <div id="search-results">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">Search your records</div>
+        <div class="empty-sub">Find by phone number, vehicle number, or customer name</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS PAGE -->
+  <div id="page-analytics" class="page">
+    <div class="section-title">This Month</div>
+    <div class="kpi-grid" style="margin-bottom:24px;">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Month Vehicles</div>
+        <div class="kpi-value" id="ana-month-vehicles">—</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Month Revenue</div>
+        <div class="kpi-value" id="ana-month-revenue">—</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Avg per Vehicle</div>
+        <div class="kpi-value" id="ana-avg">—</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Best Day Rev.</div>
+        <div class="kpi-value" id="ana-best-day">—</div>
+      </div>
+    </div>
+
+    <div class="section-title">Services Breakdown</div>
+    <div class="kpi-card" style="padding:20px;margin-bottom:20px;">
+      <div id="service-chart"></div>
+    </div>
+
+    <div class="section-title">Last 7 Days Revenue</div>
+    <div class="kpi-card" style="padding:20px;margin-bottom:20px;">
+      <div id="days-chart"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div id="page-settings" class="page">
+    <div class="section-title">Account</div>
+    <div class="kpi-card" style="display:flex;align-items:center;gap:16px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:40px;">👤</div>
+      <div>
+        <div style="font-weight:700;font-size:15px;" id="settings-name">—</div>
+        <div style="color:var(--muted);font-size:13px;" id="settings-email">—</div>
+        <div style="margin-top:6px;"><span class="badge green">Connected</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">Data</div>
+    <div class="settings-item" onclick="openModal('modal-biz')">
+      <div class="settings-item-left">
+        <span class="settings-icon">🏪</span>
+        <div>
+          <div class="settings-label">Business Info</div>
+          <div class="settings-sub">Name, location</div>
         </div>
-        <p class="pin-err" id="setpin-err"></p>
-        <div class="keypad">
-          <button class="key" onclick="SETPIN.press('1')">1</button><button class="key" onclick="SETPIN.press('2')">2</button><button class="key" onclick="SETPIN.press('3')">3</button>
-          <button class="key" onclick="SETPIN.press('4')">4</button><button class="key" onclick="SETPIN.press('5')">5</button><button class="key" onclick="SETPIN.press('6')">6</button>
-          <button class="key" onclick="SETPIN.press('7')">7</button><button class="key" onclick="SETPIN.press('8')">8</button><button class="key" onclick="SETPIN.press('9')">9</button>
-          <button class="key key-blank"></button><button class="key" onclick="SETPIN.press('0')">0</button><button class="key key-del" onclick="SETPIN.del()">⌫</button>
+      </div>
+      <span class="settings-chevron">›</span>
+    </div>
+    <div class="settings-item" onclick="openModal('modal-pin')">
+      <div class="settings-item-left">
+        <span class="settings-icon">🔐</span>
+        <div>
+          <div class="settings-label">Change PIN</div>
+          <div class="settings-sub">Update your 4-digit PIN</div>
+        </div>
+      </div>
+      <span class="settings-chevron">›</span>
+    </div>
+    <div class="settings-item" onclick="manualSync()">
+      <div class="settings-item-left">
+        <span class="settings-icon">☁️</span>
+        <div>
+          <div class="settings-label">Force Sync</div>
+          <div class="settings-sub">Upload local data to Google Sheets</div>
+        </div>
+      </div>
+      <span class="settings-chevron">›</span>
+    </div>
+    <div class="settings-item" onclick="exportCSV()">
+      <div class="settings-item-left">
+        <span class="settings-icon">📥</span>
+        <div>
+          <div class="settings-label">Export CSV</div>
+          <div class="settings-sub">Download all records</div>
+        </div>
+      </div>
+      <span class="settings-chevron">›</span>
+    </div>
+
+    <div class="divider"></div>
+    <div class="settings-item" onclick="signOut()" style="border-color:var(--red);">
+      <div class="settings-item-left">
+        <span class="settings-icon">🚪</span>
+        <div>
+          <div class="settings-label" style="color:var(--red);">Sign Out</div>
+          <div class="settings-sub">Clears local data</div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ══ PIN LOGIN SCREEN ════════════════════ -->
-<div id="scr-pin" class="scr">
-  <div class="pin-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:28px 20px">
-    <div class="pin-avatar" id="pin-av">?</div>
-    <div class="pin-name" id="pin-name">—</div>
-    <div class="pin-email" id="pin-email">—</div>
-    <div class="pin-card" style="width:100%;max-width:340px">
-      <div class="pin-card-ttl">Enter PIN to unlock</div>
-      <div class="pin-dots" id="pin-dots">
-        <span class="dot" id="pd0"></span><span class="dot" id="pd1"></span>
-        <span class="dot" id="pd2"></span><span class="dot" id="pd3"></span>
-      </div>
-      <p class="pin-err" id="pin-err"></p>
-      <div class="keypad">
-        <button class="key" onclick="LOGINPIN.press('1')">1</button><button class="key" onclick="LOGINPIN.press('2')">2</button><button class="key" onclick="LOGINPIN.press('3')">3</button>
-        <button class="key" onclick="LOGINPIN.press('4')">4</button><button class="key" onclick="LOGINPIN.press('5')">5</button><button class="key" onclick="LOGINPIN.press('6')">6</button>
-        <button class="key" onclick="LOGINPIN.press('7')">7</button><button class="key" onclick="LOGINPIN.press('8')">8</button><button class="key" onclick="LOGINPIN.press('9')">9</button>
-        <button class="key key-blank"></button><button class="key" onclick="LOGINPIN.press('0')">0</button><button class="key key-del" onclick="LOGINPIN.del()">⌫</button>
-      </div>
-      <button class="pin-switch" onclick="switchAccount()">Switch / Change Account</button>
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="navTo('home')">
+      <span class="nav-icon">🏠</span>Home
     </div>
-  </div>
-</div>
-
-<!-- ══ MAIN APP ════════════════════════════ -->
-<div id="app">
-  <header class="hdr">
-    <button class="hdr-back hide" id="back-btn" onclick="goBack()">←</button>
-    <div class="hdr-title" id="hdr-title">Car Wash Manager</div>
-    <div class="hdr-user" id="hdr-user" onclick="showUserMenu()">?</div>
-  </header>
-
-  <main class="content">
-
-    <!-- HOME -->
-    <section id="pg-home" class="pg on">
-      <div class="hero">
-        <div class="hero-biz" id="hero-biz">Car Wash</div>
-        <div class="hero-sub" id="hero-sub">Good morning! 👋</div>
-        <div class="sync-row"><span class="sdot" id="sdot"></span><span id="sync-txt">Synced</span></div>
-      </div>
-      <div class="kpi-grid">
-        <div class="kpi sky"><div class="kpi-ico">🚗</div><div class="kpi-val" id="k-tv">—</div><div class="kpi-lbl">Total Vehicles</div></div>
-        <div class="kpi green"><div class="kpi-ico">💰</div><div class="kpi-val sm" id="k-tr">—</div><div class="kpi-lbl">Total Revenue</div></div>
-        <div class="kpi amber"><div class="kpi-ico">📅</div><div class="kpi-val" id="k-dv">—</div><div class="kpi-lbl">Today Vehicles</div></div>
-        <div class="kpi violet"><div class="kpi-ico">📊</div><div class="kpi-val sm" id="k-dr">—</div><div class="kpi-lbl">Today Revenue</div></div>
-        <div class="kpi rose full"><div class="kpi-ico">⭐</div><div class="kpi-val sm" id="k-top">—</div><div class="kpi-lbl">Most Popular Service</div></div>
-      </div>
-      <div class="act-grid">
-        <button class="act" onclick="nav('new-entry','New Entry')"><div class="act-ico">➕</div><div class="act-lbl">New Entry</div><div class="act-desc">Record a wash</div></button>
-        <button class="act" onclick="nav('search','Search')"><div class="act-ico">🔍</div><div class="act-lbl">Search</div><div class="act-desc">Customer history</div></button>
-        <button class="act" onclick="nav('analytics','Analytics')"><div class="act-ico">📈</div><div class="act-lbl">Analytics</div><div class="act-desc">Charts & insights</div></button>
-        <button class="act" onclick="nav('settings','Settings')"><div class="act-ico">⚙️</div><div class="act-lbl">Settings</div><div class="act-desc">Configure app</div></button>
-      </div>
-      <div class="sec-hdr"><div class="sec-ttl">Recent Entries</div><button class="sec-lnk" onclick="nav('search','Search')">View all →</button></div>
-      <div class="rec-list" id="rec-list"><div class="empty"><div class="empty-ico">🚿</div><p>No entries yet.<br/>Tap <strong>New Entry</strong> to start!</p></div></div>
-    </section>
-
-    <!-- NEW ENTRY -->
-    <section id="pg-new-entry" class="pg">
-      <form id="entry-form" onsubmit="submitEntry(event)">
-        <div class="fsec">Customer Info</div>
-        <div class="fg"><label>Customer Name <span class="req">*</span></label><input type="text" id="f-name" placeholder="e.g. Rajesh Kumar" required/></div>
-        <div class="fg"><label>Phone Number <span class="req">*</span></label><input type="tel" id="f-phone" placeholder="10-digit mobile" maxlength="10" required/></div>
-        <div class="fsec">Vehicle Info</div>
-        <div class="fg"><label>Vehicle Number <span class="req">*</span></label><input type="text" id="f-vno" placeholder="e.g. KA01AB1234" class="uc" required/></div>
-        <div class="fg"><label>Vehicle Model</label><input type="text" id="f-vmodel" placeholder="e.g. Maruti Swift"/></div>
-        <div class="fsec">Service Info</div>
-        <div class="fg">
-          <label>Service Type <span class="req">*</span></label>
-          <select id="f-svc" required>
-            <option value="">— Select —</option>
-            <option>Exterior Wash</option><option>Interior Wash</option>
-            <option>Full Wash (Interior + Exterior)</option><option>Foam Wash</option>
-            <option>Pressure Wash</option><option>Waxing & Polish</option>
-            <option>Vacuum Cleaning</option><option>Full Detailing</option>
-            <option>Engine Wash</option><option>Other</option>
-          </select>
-        </div>
-        <div class="fg"><label>Amount (₹) <span class="req">*</span></label><input type="number" id="f-amt" placeholder="e.g. 300" min="0" required/></div>
-        <div class="fg"><label>Staff Name</label><input type="text" id="f-staff" placeholder="Who serviced this vehicle"/></div>
-        <div class="fg"><label>Notes</label><textarea id="f-notes" placeholder="Any special notes..."></textarea></div>
-        <button type="submit" class="btn btn-p" id="save-btn">💾 Save Entry</button>
-      </form>
-    </section>
-
-    <!-- SEARCH -->
-    <section id="pg-search" class="pg">
-      <div class="stabs">
-        <button class="stab on" onclick="setSearch('phone',this)">📱 By Phone</button>
-        <button class="stab" onclick="setSearch('vno',this)">🚗 By Vehicle No.</button>
-      </div>
-      <div class="s-row">
-        <input type="tel" id="s-q" class="s-inp" placeholder="Enter phone number..." maxlength="10"/>
-        <button class="s-btn" onclick="doSearch()">🔍</button>
-      </div>
-      <div id="s-results"></div>
-    </section>
-
-    <!-- ANALYTICS -->
-    <section id="pg-analytics" class="pg">
-      <div class="kpi-grid" style="margin-bottom:18px">
-        <div class="kpi sky"><div class="kpi-ico">🚗</div><div class="kpi-val" id="a-tv">—</div><div class="kpi-lbl">Total Vehicles</div></div>
-        <div class="kpi green"><div class="kpi-ico">💰</div><div class="kpi-val sm" id="a-tr">—</div><div class="kpi-lbl">Total Revenue</div></div>
-        <div class="kpi amber"><div class="kpi-ico">📅</div><div class="kpi-val" id="a-mv">—</div><div class="kpi-lbl">This Month</div></div>
-        <div class="kpi violet"><div class="kpi-ico">📊</div><div class="kpi-val sm" id="a-mr">—</div><div class="kpi-lbl">Month Revenue</div></div>
-        <div class="kpi indigo full"><div class="kpi-ico">📈</div><div class="kpi-val sm" id="a-avg">—</div><div class="kpi-lbl">Avg Revenue / Vehicle</div></div>
-      </div>
-      <div class="sec-hdr" style="margin-bottom:11px"><div class="sec-ttl">Services Breakdown</div></div>
-      <div class="bar-wrap" id="svc-chart" style="margin-bottom:22px"></div>
-      <div class="sec-hdr" style="margin-bottom:11px"><div class="sec-ttl">Last 7 Days Revenue</div></div>
-      <div class="bar-wrap" id="day-chart"></div>
-    </section>
-
-    <!-- SETTINGS -->
-    <section id="pg-settings" class="pg">
-      <div class="sset">
-        <div class="sset-ttl">👤 Account</div>
-        <div class="profile-row">
-          <div class="profile-av" id="sett-av">?</div>
-          <div><div class="profile-name" id="sett-name">—</div><div class="profile-email" id="sett-email">—</div></div>
-        </div>
-        <button class="btn btn-d" onclick="switchAccount()">Switch / Change Account</button>
-      </div>
-      <div class="sset">
-        <div class="sset-ttl">📊 Google Sheet</div>
-        <div class="sheet-info">
-          <span>📄</span><span>"Car Wash Data"</span>
-          <a id="sheet-url-link" href="#" target="_blank">Open Sheet →</a>
-        </div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Your data is saved in a private tab (named after your email) inside the shared <strong style="color:var(--sky)">"Car Wash Data"</strong> sheet in the owner's Drive.</p>
-      </div>
-      <div class="sset">
-        <div class="sset-ttl">🏢 Business Info</div>
-        <div class="fg"><label>Business Name</label><input type="text" id="set-biz"/></div>
-        <div class="fg"><label>Your Name</label><input type="text" id="set-name"/></div>
-        <button class="btn btn-p" onclick="saveSettings()">Save Settings</button>
-      </div>
-      <div class="sset">
-        <div class="sset-ttl">🔐 PIN</div>
-        <button class="btn btn-s" onclick="showChangePinModal()">Change PIN</button>
-      </div>
-      <div class="sset">
-        <div class="sset-ttl">📥 Export</div>
-        <button class="btn btn-s" onclick="exportCSV()">⬇️ Download as CSV</button>
-      </div>
-      <div class="sset">
-        <div class="sset-ttl">⚙️ Apps Script URL</div>
-        <div class="fg"><label>Web App URL</label><input type="url" id="set-url" style="font-size:12px"/></div>
-        <button class="btn btn-s" onclick="updateURL()">Update URL</button>
-      </div>
-    </section>
-
-  </main>
-  <nav class="bnav">
-    <button class="nb on" id="nb-home" onclick="nav('home','Car Wash Manager')"><span class="ni">🏠</span>Home</button>
-    <button class="nb" id="nb-new-entry" onclick="nav('new-entry','New Entry')"><span class="ni">➕</span>Add</button>
-    <button class="nb" id="nb-search" onclick="nav('search','Search')"><span class="ni">🔍</span>Search</button>
-    <button class="nb" id="nb-analytics" onclick="nav('analytics','Analytics')"><span class="ni">📈</span>Reports</button>
+    <div class="nav-item" id="nav-new" onclick="navTo('new')">
+      <span class="nav-icon">➕</span>New
+    </div>
+    <div class="nav-item" id="nav-search" onclick="navTo('search')">
+      <span class="nav-icon">🔍</span>Search
+    </div>
+    <div class="nav-item" id="nav-analytics" onclick="navTo('analytics')">
+      <span class="nav-icon">📊</span>Analytics
+    </div>
+    <div class="nav-item" id="nav-settings" onclick="navTo('settings')">
+      <span class="nav-icon">⚙️</span>Settings
+    </div>
   </nav>
 </div>
 
-<!-- Toast -->
-<div id="toast" class="toast"></div>
-<!-- Loader -->
-<div id="ldr" class="ldr" style="display:none"><div class="ldr-box"><div class="spin"></div><p class="ldr-txt" id="ldr-txt">Please wait…</p></div></div>
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Business Info Modal -->
+<div class="modal-overlay" id="modal-biz">
+  <div class="modal">
+    <div class="modal-title">Business Info <span class="modal-close" onclick="closeModal('modal-biz')">✕</span></div>
+    <div class="form-group">
+      <label class="form-label">Business Name</label>
+      <input class="form-input" id="biz-name" placeholder="My Car Wash">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Location</label>
+      <input class="form-input" id="biz-location" placeholder="City, Area">
+    </div>
+    <button class="btn btn-primary" onclick="saveBiz()">Save</button>
+  </div>
+</div>
 
 <!-- Change PIN Modal -->
-<div id="pin-modal" class="modal-bg">
+<div class="modal-overlay" id="modal-pin">
   <div class="modal">
-    <div class="modal-ttl">🔐 Change PIN</div>
-    <div class="modal-sub" id="pm-sub">Enter your current PIN</div>
-    <div class="pin-dots" id="mp-dots" style="display:flex;gap:12px;justify-content:center;margin-bottom:10px">
-      <span class="dot" id="mpd0"></span><span class="dot" id="mpd1"></span>
-      <span class="dot" id="mpd2"></span><span class="dot" id="mpd3"></span>
+    <div class="modal-title">Change PIN <span class="modal-close" onclick="closeModal('modal-pin')">✕</span></div>
+    <div class="form-group">
+      <label class="form-label">Current PIN</label>
+      <input class="form-input" id="old-pin" type="password" maxlength="4" inputmode="numeric" placeholder="••••">
     </div>
-    <p class="pin-err" id="mp-err" style="margin-bottom:12px;text-align:center;font-size:12px"></p>
-    <div class="keypad">
-      <button class="key" onclick="MPIN.press('1')">1</button><button class="key" onclick="MPIN.press('2')">2</button><button class="key" onclick="MPIN.press('3')">3</button>
-      <button class="key" onclick="MPIN.press('4')">4</button><button class="key" onclick="MPIN.press('5')">5</button><button class="key" onclick="MPIN.press('6')">6</button>
-      <button class="key" onclick="MPIN.press('7')">7</button><button class="key" onclick="MPIN.press('8')">8</button><button class="key" onclick="MPIN.press('9')">9</button>
-      <button class="key key-blank"></button><button class="key" onclick="MPIN.press('0')">0</button><button class="key key-del" onclick="MPIN.del()">⌫</button>
+    <div class="form-group">
+      <label class="form-label">New PIN</label>
+      <input class="form-input" id="new-pin" type="password" maxlength="4" inputmode="numeric" placeholder="••••">
     </div>
-    <button class="btn btn-s" style="margin-top:12px" onclick="closePinModal()">Cancel</button>
+    <div class="form-group">
+      <label class="form-label">Confirm New PIN</label>
+      <input class="form-input" id="conf-pin" type="password" maxlength="4" inputmode="numeric" placeholder="••••">
+    </div>
+    <div class="pin-error" id="modal-pin-error"></div>
+    <button class="btn btn-primary" onclick="changePin()">Update PIN</button>
   </div>
 </div>
 
-<!-- User Menu Modal -->
-<div id="user-modal" class="modal-bg" onclick="if(event.target===this)closeUserMenu()">
-  <div class="modal">
-    <div class="modal-ttl">Account</div>
-    <div class="profile-row" style="margin-bottom:12px">
-      <div class="profile-av" id="um-av">?</div>
-      <div><div class="profile-name" id="um-name">—</div><div class="profile-email" id="um-email">—</div></div>
-    </div>
-    <button class="btn btn-s" onclick="closeUserMenu();APP.lock()">🔒 Lock App</button>
-    <button class="btn btn-d" onclick="switchAccount()">Switch / Change Account</button>
-    <button class="btn btn-s" style="margin-top:4px" onclick="closeUserMenu()">Cancel</button>
-  </div>
-</div>
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════ GOOGLE IDENTITY SERVICES ══════════ -->
+<script src="https://accounts.google.com/gsi/client" async></script>
 
 <script>
-'use strict';
-/* ════════════════════════════════════
-   STORAGE
-════════════════════════════════════ */
-const LS={
-  g:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},
-  s:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}},
-  d:k=>{try{localStorage.removeItem(k)}catch{}}
-};
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const LS = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const LSset = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const LSdel = (k) => { try { localStorage.removeItem(k); } catch {} };
 
-/* ════════════════════════════════════
-   TOAST & LOADER
-════════════════════════════════════ */
-let _tt;
-function toast(msg,type='',dur=3200){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.className='toast show '+type;
-  clearTimeout(_tt);_tt=setTimeout(()=>el.className='toast',dur);
-}
-function loading(msg='Please wait…'){document.getElementById('ldr-txt').textContent=msg;document.getElementById('ldr').style.display='flex'}
-function done(){document.getElementById('ldr').style.display='none'}
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let accessToken = null;
+let tokenClient = null;
+let userData = {};
+let entries = [];
+let pendingSync = [];
+let sheetId = null;
 
-/* ════════════════════════════════════
-   SCREEN / NAV
-════════════════════════════════════ */
-function showScr(id){
-  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
-  const el=document.getElementById('scr-'+id);
-  if(el)el.classList.add('on');
-  document.getElementById('app').style.display='none';
-  document.getElementById('app').classList.remove('on');
-}
-function showApp(){
-  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
-  const a=document.getElementById('app');
-  a.style.display='flex';a.classList.add('on');
-}
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.onload = async () => {
+  // Load stored data
+  try { entries = JSON.parse(LS('entries','[]')); } catch { entries = []; }
+  try { pendingSync = JSON.parse(LS('pendingSync','[]')); } catch { pendingSync = []; }
+  userData = JSON.parse(LS('userData','{}') || '{}');
+  sheetId = LS('sheetId', null);
 
-let _cur='home',_hist=[];
-function nav(id,title,skip=false){
-  if(!skip&&_cur!==id)_hist.push(_cur);
-  _cur=id;
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
-  const pg=document.getElementById('pg-'+id);
-  if(pg){pg.classList.add('on');pg.scrollTop=0}
-  document.getElementById('hdr-title').textContent=title;
-  document.getElementById('back-btn').classList.toggle('hide',_hist.length===0);
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
-  const nb=document.getElementById('nb-'+id);if(nb)nb.classList.add('on');
-  if(id==='analytics')loadAnalytics();
-  if(id==='settings')fillSettings();
-  if(id==='home'){refreshKPIs();refreshRecent()}
-}
-function goBack(){
-  if(!_hist.length)return;
-  const prev=_hist.pop();
-  const titles={home:'Car Wash Manager','new-entry':'New Entry',search:'Search',analytics:'Analytics',settings:'Settings'};
-  _cur=prev;
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
-  const pg=document.getElementById('pg-'+prev);if(pg)pg.classList.add('on');
-  document.getElementById('hdr-title').textContent=titles[prev]||'';
-  document.getElementById('back-btn').classList.toggle('hide',_hist.length===0);
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
-  const nb=document.getElementById('nb-'+prev);if(nb)nb.classList.add('on');
-}
+  const savedToken = LS('accessToken', null);
+  const tokenExp = parseInt(LS('tokenExpiry', '0'));
+  const hasPin = LS('pin_hash', null);
 
-/* ════════════════════════════════════
-   SETUP SCREENS
-════════════════════════════════════ */
-function saveURL(){
-  const url=document.getElementById('url-inp').value.trim();
-  if(!url||!url.startsWith('https://script.google.com')){
-    toast('Paste a valid Apps Script URL','er');return;
-  }
-  LS.s('script_url',url);
-  showScr('email');
-}
-function saveEmail(){
-  const email=document.getElementById('email-inp').value.trim();
-  const name=document.getElementById('name-inp').value.trim();
-  const biz=document.getElementById('biz-inp').value.trim();
-  if(!email||!email.includes('@')){toast('Enter a valid email','er');return;}
-  const cfg=LS.g('cfg')||{};
-  cfg.email=email;cfg.name=name||email.split('@')[0];cfg.biz=biz||'Car Wash';
-  LS.s('cfg',cfg);
-  SETPIN._phase='new1';SETPIN._first='';
-  document.getElementById('setpin-sub').textContent='Create a 4-digit PIN for quick access';
-  SETPIN.reset();
-  showScr('setpin');
-}
-function switchAccount(){
-  closeUserMenu();
-  const cfg=LS.g('cfg')||{};
-  delete cfg.pin;
-  LS.s('cfg',cfg);
-  showScr('email');
-  document.getElementById('email-inp').value='';
-  document.getElementById('name-inp').value='';
-  document.getElementById('biz-inp').value='';
-}
-
-/* ════════════════════════════════════
-   SET PIN (first time)
-════════════════════════════════════ */
-const SETPIN={
-  _v:'',_phase:'new1',_first:'',
-  reset(){this._v='';this._render()},
-  press(d){if(this._v.length>=4)return;this._v+=d;this._render();if(this._v.length===4)setTimeout(()=>this._handle(),100)},
-  del(){this._v=this._v.slice(0,-1);this._render()},
-  _render(){
-    [0,1,2,3].forEach(i=>{
-      const d=document.getElementById('spd'+i);
-      if(d){d.classList.toggle('on',i<this._v.length);d.classList.remove('err')}
-    })
-  },
-  _shake(){
-    [0,1,2,3].forEach(i=>{const d=document.getElementById('spd'+i);if(d)d.classList.add('err')});
-    setTimeout(()=>this.reset(),600);
-  },
-  _handle(){
-    if(this._phase==='new1'){
-      this._first=this._v;this._phase='new2';
-      document.getElementById('setpin-sub').textContent='Confirm your PIN';
-      this.reset();
+  if (userData.email && savedToken && Date.now() < tokenExp) {
+    // Token still valid
+    accessToken = savedToken;
+    if (hasPin) {
+      showPinLogin();
     } else {
-      if(this._v===this._first){
-        const cfg=LS.g('cfg')||{};cfg.pin=this._v;LS.s('cfg',cfg);
-        APP.enter();
-      } else {
-        document.getElementById('setpin-err').textContent='PINs do not match';
-        this._phase='new1';this._first='';
-        document.getElementById('setpin-sub').textContent='Create a 4-digit PIN for quick access';
-        this._shake();
-        setTimeout(()=>document.getElementById('setpin-err').textContent='',2000);
-      }
+      showPinSetup();
     }
+  } else if (userData.email) {
+    // Need fresh token
+    initTokenClient();
+    showScreen('screen-signin');
+  } else {
+    initTokenClient();
+    showScreen('screen-signin');
   }
-};
 
-/* ════════════════════════════════════
-   LOGIN PIN
-════════════════════════════════════ */
-const LOGINPIN={
-  _v:'',
-  reset(){this._v='';this._render();document.getElementById('pin-err').textContent=''},
-  press(d){if(this._v.length>=4)return;this._v+=d;this._render();if(this._v.length===4)setTimeout(()=>this._check(),100)},
-  del(){this._v=this._v.slice(0,-1);this._render()},
-  _render(){
-    [0,1,2,3].forEach(i=>{
-      const d=document.getElementById('pd'+i);
-      if(d){d.classList.toggle('on',i<this._v.length);d.classList.remove('err')}
-    })
-  },
-  _shake(){
-    [0,1,2,3].forEach(i=>{const d=document.getElementById('pd'+i);if(d)d.classList.add('err')});
-    setTimeout(()=>this.reset(),600);
-  },
-  _check(){
-    const cfg=LS.g('cfg')||{};
-    if(this._v===cfg.pin){APP.enter();}
-    else{
-      this._shake();
-      document.getElementById('pin-err').textContent='Incorrect PIN';
-      setTimeout(()=>document.getElementById('pin-err').textContent='',2000);
-    }
-  }
-};
-
-/* ════════════════════════════════════
-   CHANGE PIN (in-app)
-════════════════════════════════════ */
-const MPIN={
-  _v:'',_phase:'old',_first:'',
-  reset(){this._v='';this._renderDots()},
-  press(d){if(this._v.length>=4)return;this._v+=d;this._renderDots();if(this._v.length===4)setTimeout(()=>this._handle(),100)},
-  del(){this._v=this._v.slice(0,-1);this._renderDots()},
-  _renderDots(){
-    [0,1,2,3].forEach(i=>{
-      const d=document.getElementById('mpd'+i);
-      if(d){d.classList.toggle('on',i<this._v.length);d.classList.remove('err')}
-    })
-  },
-  _shake(){
-    [0,1,2,3].forEach(i=>{const d=document.getElementById('mpd'+i);if(d)d.classList.add('err')});
-    setTimeout(()=>this.reset(),600);
-  },
-  _handle(){
-    const cfg=LS.g('cfg')||{};
-    if(this._phase==='old'){
-      if(this._v!==cfg.pin){
-        this._shake();document.getElementById('mp-err').textContent='Incorrect PIN';
-        setTimeout(()=>document.getElementById('mp-err').textContent='',2000);return;
-      }
-      this._phase='new1';document.getElementById('pm-sub').textContent='Enter new PIN';this.reset();
-    } else if(this._phase==='new1'){
-      this._first=this._v;this._phase='new2';
-      document.getElementById('pm-sub').textContent='Confirm new PIN';this.reset();
+  // Set up Google Sign-In button
+  const btn = document.getElementById('google-signin-btn');
+  btn.onclick = () => {
+    if (tokenClient) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
-      if(this._v===this._first){
-        cfg.pin=this._v;LS.s('cfg',cfg);closePinModal();toast('PIN updated ✅','ok');
-      } else {
-        this._shake();document.getElementById('mp-err').textContent='PINs do not match';
-        this._phase='new1';this._first='';
-        document.getElementById('pm-sub').textContent='Enter new PIN';
-        setTimeout(()=>document.getElementById('mp-err').textContent='',2000);
+      showToast('Google API loading, please wait…', 3000);
+      setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: 'consent' }); }, 2000);
+    }
+  };
+};
+
+function initTokenClient() {
+  if (!window.google) {
+    setTimeout(initTokenClient, 500);
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    callback: onTokenResponse,
+    error_callback: (err) => { showToast('Sign-in failed: ' + (err.message || 'Try again'), 4000); }
+  });
+}
+
+async function onTokenResponse(resp) {
+  if (resp.error) { showToast('Sign-in error: ' + resp.error, 4000); return; }
+  accessToken = resp.access_token;
+  const expiry = Date.now() + (resp.expires_in - 60) * 1000;
+  LSset('accessToken', accessToken);
+  LSset('tokenExpiry', expiry);
+
+  // Fetch user profile
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const info = await r.json();
+    userData = { email: info.email, name: info.name, picture: info.picture };
+    LSset('userData', JSON.stringify(userData));
+  } catch {}
+
+  // Get or create sheet
+  await ensureSheet();
+
+  const hasPin = LS('pin_hash', null);
+  if (hasPin) showPinLogin();
+  else showPinSetup();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GOOGLE SHEETS — ensure "Car Wash Records" sheet exists
+// ═══════════════════════════════════════════════════════════
+async function ensureSheet() {
+  if (!accessToken) return;
+  const storedId = LS('sheetId', null);
+
+  if (storedId) {
+    // Verify it still exists and we can access it
+    try {
+      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${storedId}`, {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      });
+      if (r.ok) { sheetId = storedId; return; }
+    } catch {}
+  }
+
+  // Search Drive for existing "Car Wash Records" file
+  try {
+    const q = encodeURIComponent(`name='${SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const data = await r.json();
+    if (data.files && data.files.length > 0) {
+      sheetId = data.files[0].id;
+      LSset('sheetId', sheetId);
+      return;
+    }
+  } catch {}
+
+  // Create new spreadsheet
+  try {
+    const r = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        properties: { title: SHEET_NAME },
+        sheets: [{
+          properties: { title: 'Records' },
+          data: [{ rowData: [{ values: [
+            'Date','Time','Customer Name','Phone','Vehicle No','Vehicle Model',
+            'Service Type','Amount (₹)','Staff','Notes'
+          ].map(v => ({ userEnteredValue: { stringValue: v } })) }] }]
+        }]
+      })
+    });
+    if (r.ok) {
+      const d = await r.json();
+      sheetId = d.spreadsheetId;
+      LSset('sheetId', sheetId);
+      showToast(`✅ "${SHEET_NAME}" created in your Google Drive`, 3000);
+    }
+  } catch (e) { showToast('Could not create sheet: ' + e.message, 4000); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC — append rows to sheet
+// ═══════════════════════════════════════════════════════════
+async function syncToSheet(entryObj) {
+  if (!accessToken || !sheetId) { queueSync(entryObj); return false; }
+  const row = [
+    entryObj.date, entryObj.time, entryObj.name, entryObj.phone,
+    entryObj.vehicle, entryObj.model, entryObj.service,
+    entryObj.amount, entryObj.staff, entryObj.notes
+  ];
+  try {
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Records!A:J:append?valueInputOption=USER_ENTERED`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] })
+    });
+    if (r.status === 401) { accessToken = null; queueSync(entryObj); return false; }
+    if (!r.ok) { queueSync(entryObj); return false; }
+    return true;
+  } catch { queueSync(entryObj); return false; }
+}
+
+function queueSync(entry) {
+  pendingSync.push(entry);
+  LSset('pendingSync', JSON.stringify(pendingSync));
+  setSyncStatus('pending');
+}
+
+async function manualSync() {
+  if (!accessToken) {
+    showToast('Not signed in — please sign out and sign in again', 3000);
+    return;
+  }
+  if (!sheetId) {
+    showToast('Creating sheet…', 2000);
+    await ensureSheet();
+  }
+  if (pendingSync.length === 0) { showToast('✅ Already synced', 2000); return; }
+  showToast(`Syncing ${pendingSync.length} records…`, 2000);
+  const failed = [];
+  for (const e of pendingSync) {
+    const ok = await syncToSheet(e);
+    if (!ok) failed.push(e);
+  }
+  pendingSync = failed;
+  LSset('pendingSync', JSON.stringify(pendingSync));
+  if (failed.length === 0) { setSyncStatus('synced'); showToast('✅ All synced!', 2500); }
+  else showToast(`⚠️ ${failed.length} records still pending`, 3000);
+}
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('sync-indicator');
+  const label = document.getElementById('sync-label');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + status;
+  label.textContent = status === 'synced' ? 'Synced' : status === 'pending' ? 'Pending' : 'Error';
+}
+
+// ═══════════════════════════════════════════════════════════
+// PIN SYSTEM
+// ═══════════════════════════════════════════════════════════
+let pinBuffer = { setup: '', setup2: '', login: '' };
+let pinStep = 'first'; // 'first' | 'confirm'
+
+function hash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h.toString(36);
+}
+
+function pinKey(ctx, n) {
+  if (ctx === 'setup') {
+    if (pinStep === 'first') {
+      if (pinBuffer.setup.length < 4) {
+        pinBuffer.setup += n;
+        updateDots('pin-setup-dots', pinBuffer.setup.length);
+        if (pinBuffer.setup.length === 4) setTimeout(() => {
+          // move to confirm
+          pinStep = 'confirm';
+          pinBuffer.setup = '';
+          document.getElementById('pin-setup-title').textContent = 'Confirm PIN';
+          document.getElementById('pin-setup-sub').textContent = 'Enter the same PIN again';
+          updateDots('pin-setup-dots', 0);
+          document.getElementById('pin-setup-error').textContent = '';
+        }, 200);
+      }
+    } else {
+      if (pinBuffer.setup2.length < 4) {
+        pinBuffer.setup2 += n;
+        updateDots('pin-setup-dots', pinBuffer.setup2.length);
+        if (pinBuffer.setup2.length === 4) setTimeout(() => completeSetup(), 200);
       }
     }
+    return;
   }
-};
-function showChangePinModal(){
-  MPIN._phase='old';MPIN._first='';MPIN.reset();
-  document.getElementById('pm-sub').textContent='Enter your current PIN';
-  document.getElementById('pin-modal').classList.add('on');
+  // login
+  if (pinBuffer.login.length < 4) {
+    pinBuffer.login += n;
+    updateDots('pin-login-dots', pinBuffer.login.length);
+    if (pinBuffer.login.length === 4) setTimeout(() => checkPin(), 200);
+  }
 }
-function closePinModal(){document.getElementById('pin-modal').classList.remove('on')}
-function showUserMenu(){document.getElementById('user-modal').classList.add('on')}
-function closeUserMenu(){document.getElementById('user-modal').classList.remove('on')}
 
-/* ════════════════════════════════════
-   APP
-════════════════════════════════════ */
-const APP={
-  enter(){
-    showApp();_hist=[];nav('home','Car Wash Manager',true);
-    const cfg=LS.g('cfg')||{};
-    const initials=(cfg.name||cfg.email||'?')[0].toUpperCase();
-    document.getElementById('hdr-user').textContent=initials;
-    document.getElementById('hero-biz').textContent=cfg.biz||cfg.name||'Car Wash';
-    const h=new Date().getHours();
-    document.getElementById('hero-sub').textContent=h<12?'Good morning! ☀️':h<17?'Good afternoon! 👋':'Good evening! 🌙';
-    document.getElementById('um-av').textContent=initials;
-    document.getElementById('um-name').textContent=cfg.name||cfg.email;
-    document.getElementById('um-email').textContent=cfg.email;
-    refreshKPIs();refreshRecent();
-    syncFromSheet();
-  },
-  lock(){
-    const cfg=LS.g('cfg')||{};
-    if(cfg.pin){
-      const initials=(cfg.name||cfg.email||'?')[0].toUpperCase();
-      document.getElementById('pin-av').textContent=initials;
-      document.getElementById('pin-name').textContent=cfg.name||cfg.email;
-      document.getElementById('pin-email').textContent=cfg.email||'';
-      LOGINPIN.reset();showScr('pin');
-    } else {showScr('email');}
-  }
-};
-
-/* ════════════════════════════════════
-   INIT / RESTORE
-════════════════════════════════════ */
-window.addEventListener('DOMContentLoaded',()=>{
-  const url=LS.g('script_url');
-  const cfg=LS.g('cfg');
-  if(!url){showScr('url');return;}
-  if(!cfg||!cfg.email){showScr('email');return;}
-  if(cfg.pin){APP.lock();return;}
-  APP.enter();
-});
-
-/* ════════════════════════════════════
-   BACKEND — Apps Script
-   All data goes to the script which
-   saves to "Car Wash Data" sheet in
-   YOUR Google Drive, tabbed by email.
-════════════════════════════════════ */
-const BACKEND={
-  url(){return LS.g('script_url')||''},
-  async call(payload){
-    const url=this.url();
-    if(!url)return{error:'No script URL configured'};
-    try{
-      // Apps Script doesn't support CORS for POST with JSON body
-      // Use no-cors fetch with FormData, or use a GET with encoded params
-      // Best approach: encode payload as URL param for GET
-      const encoded=encodeURIComponent(JSON.stringify(payload));
-      const res=await fetch(url+'?d='+encoded,{method:'GET',redirect:'follow'});
-      const text=await res.text();
-      // Apps Script may return HTML on error
-      if(text.startsWith('<')){return{error:'Script returned HTML — check deployment settings'}}
-      return JSON.parse(text);
-    }catch(e){return{error:e.message}}
-  },
-  async append(email,row){return this.call({action:'append',email,row})},
-  async read(email){return this.call({action:'read',email})},
-  async ping(email){return this.call({action:'ping',email})}
-};
-
-/* ════════════════════════════════════
-   LOCAL CACHE
-════════════════════════════════════ */
-function cacheKey(){const cfg=LS.g('cfg');return'cache_'+(cfg&&cfg.email?cfg.email.replace(/[@.]/g,'_'):'')}
-function cacheAdd(row){const k=cacheKey();const rows=LS.g(k)||[];rows.unshift(row);if(rows.length>1000)rows.length=1000;LS.s(k,rows)}
-function cacheAll(){return LS.g(cacheKey())||[]}
-function cacheSet(rows){LS.s(cacheKey(),rows)}
-
-/* ════════════════════════════════════
-   SYNC FROM SHEET
-════════════════════════════════════ */
-async function syncFromSheet(){
-  const cfg=LS.g('cfg');if(!cfg||!cfg.email)return;
-  setSyncBadge('spin','Syncing…');
-  const r=await BACKEND.read(cfg.email);
-  if(r.ok&&Array.isArray(r.rows)&&r.rows.length){
-    // rows from sheet are newest-last; reverse for newest-first cache
-    cacheSet(r.rows.reverse());
-    if(r.sheetUrl){
-      const lnk=document.getElementById('sheet-url-link');
-      if(lnk)lnk.href=r.sheetUrl;
+function pinDel(ctx) {
+  if (ctx === 'setup') {
+    const key = pinStep === 'first' ? 'setup' : 'setup2';
+    if (pinBuffer[key].length > 0) {
+      pinBuffer[key] = pinBuffer[key].slice(0, -1);
+      updateDots('pin-setup-dots', pinBuffer[key].length);
     }
-    refreshKPIs();refreshRecent();
-    setSyncBadge('ok','Synced');
-  } else if(r.error){
-    setSyncBadge('err','Sync failed');
   } else {
-    setSyncBadge('ok','Synced');
+    if (pinBuffer.login.length > 0) {
+      pinBuffer.login = pinBuffer.login.slice(0, -1);
+      updateDots('pin-login-dots', pinBuffer.login.length);
+    }
   }
 }
 
-function setSyncBadge(state,txt){
-  const dot=document.getElementById('sdot');
-  const t=document.getElementById('sync-txt');
-  if(dot){dot.className='sdot'+(state==='spin'?' spin':state==='err'?' err':'')}
-  if(t)t.textContent=txt||'';
-}
-
-/* ════════════════════════════════════
-   DATE HELPERS
-════════════════════════════════════ */
-function fmtDate(d){return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()}
-function fmtDT(d){const h=d.getHours(),m=String(d.getMinutes()).padStart(2,'0');return fmtDate(d)+' '+(h%12||12)+':'+m+' '+(h>=12?'pm':'am')}
-function parseDMY(s){try{const p=(s||'').split(' ')[0].split('/');return new Date(+p[2],+p[1]-1,+p[0])}catch{return null}}
-function fmtRs(n){n=Math.round(n||0);return'₹'+(n>=1000?(n/1000).toFixed(1)+'K':n)}
-function todayStr(){return fmtDate(new Date())}
-
-/* ════════════════════════════════════
-   KPIs
-════════════════════════════════════ */
-function refreshKPIs(){
-  const rows=cacheAll(),today=todayStr(),now=new Date(),mo=now.getMonth(),yr=now.getFullYear();
-  let tv=0,tr=0,dv=0,dr=0;const svc={};
-  rows.forEach(r=>{
-    const amt=parseFloat(r[6])||0;tv++;tr+=amt;
-    if((r[0]||'').startsWith(today)){dv++;dr+=amt;}
-    svc[r[5]||'Other']=(svc[r[5]||'Other']||0)+1;
-  });
-  const top=Object.entries(svc).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('k-tv').textContent=tv||'0';
-  document.getElementById('k-tr').textContent=fmtRs(tr);
-  document.getElementById('k-dv').textContent=dv||'0';
-  document.getElementById('k-dr').textContent=fmtRs(dr);
-  document.getElementById('k-top').textContent=top?top[0]+' ('+top[1]+')':'—';
-}
-function refreshRecent(){
-  const rows=cacheAll().slice(0,5),el=document.getElementById('rec-list');
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-ico">🚿</div><p>No entries yet.<br/>Tap <strong>New Entry</strong> to start!</p></div>';return}
-  el.innerHTML=rows.map(r=>`<div class="rec-item"><div class="rec-av">🚗</div><div class="rec-info"><div class="rec-name">${r[1]||'—'}</div><div class="rec-meta">${r[3]||''} · ${r[5]||''} · ${r[0]||''}</div></div><div class="rec-amt">${fmtRs(r[6])}</div></div>`).join('');
-}
-
-/* ════════════════════════════════════
-   NEW ENTRY
-════════════════════════════════════ */
-async function submitEntry(e){
-  e.preventDefault();
-  const cfg=LS.g('cfg')||{};
-  const name=document.getElementById('f-name').value.trim();
-  const phone=document.getElementById('f-phone').value.trim();
-  const vno=document.getElementById('f-vno').value.trim().toUpperCase();
-  const vmodel=document.getElementById('f-vmodel').value.trim();
-  const svc=document.getElementById('f-svc').value;
-  const amt=document.getElementById('f-amt').value.trim();
-  const staff=document.getElementById('f-staff').value.trim();
-  const notes=document.getElementById('f-notes').value.trim();
-  if(!name||!phone||!vno||!svc||!amt){toast('Fill all required fields (*)','er');return}
-  if(phone.length<10){toast('Phone must be 10 digits','er');return}
-  const row=[fmtDT(new Date()),name,phone,vno,vmodel,svc,amt,staff,notes];
-  const btn=document.getElementById('save-btn');
-  btn.disabled=true;btn.textContent='Saving…';
-  setSyncBadge('spin','Saving…');
-  cacheAdd(row); // save locally first
-  refreshKPIs();refreshRecent();
-  const res=await BACKEND.append(cfg.email||'unknown',row);
-  btn.disabled=false;btn.textContent='💾 Save Entry';
-  if(res.error){
-    setSyncBadge('err','Sheet error');
-    toast('Saved locally. Sheet error: '+res.error,'er',5000);
+function pinClear(ctx) {
+  if (ctx === 'setup') {
+    pinBuffer.setup = ''; pinBuffer.setup2 = '';
+    pinStep = 'first';
+    document.getElementById('pin-setup-title').textContent = 'Set your PIN';
+    document.getElementById('pin-setup-sub').textContent = 'Choose a 4-digit PIN to protect access';
+    updateDots('pin-setup-dots', 0);
+    document.getElementById('pin-setup-error').textContent = '';
   } else {
-    setSyncBadge('ok','Saved ✅');
-    toast('✅ Saved to Google Sheet!','ok');
-    if(res.sheetUrl){const lnk=document.getElementById('sheet-url-link');if(lnk)lnk.href=res.sheetUrl}
+    pinBuffer.login = '';
+    updateDots('pin-login-dots', 0);
   }
-  document.getElementById('entry-form').reset();
-  nav('home','Car Wash Manager');
 }
 
-/* ════════════════════════════════════
-   SEARCH
-════════════════════════════════════ */
-let _stype='phone';
-function setSearch(type,btn){
-  _stype=type;
-  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  const inp=document.getElementById('s-q');
-  if(type==='phone'){inp.type='tel';inp.placeholder='Enter phone number…';inp.maxLength=10}
-  else{inp.type='text';inp.placeholder='Enter vehicle number…';inp.maxLength=20}
-  inp.value='';document.getElementById('s-results').innerHTML='';
-}
-function doSearch(){
-  const q=document.getElementById('s-q').value.trim();
-  if(!q){toast('Enter a search term','er');return}
-  const rows=cacheAll().filter(r=>_stype==='phone'?(r[2]||'').includes(q):(r[3]||'').toUpperCase().includes(q.toUpperCase()));
-  const el=document.getElementById('s-results');
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-ico">🔍</div><p>No results for <strong>"'+q+'"</strong></p></div>';return}
-  el.innerHTML=rows.map(r=>`<div class="res-card"><div class="res-hdr"><div><div class="res-name">${r[1]||'—'}</div><div class="res-date">📅 ${r[0]||'—'}</div></div><div class="res-badge">${fmtRs(r[6])}</div></div><div class="res-grid"><div class="res-f"><div class="res-fl">📱 Phone</div><div class="res-fv">${r[2]||'—'}</div></div><div class="res-f"><div class="res-fl">🚗 Vehicle</div><div class="res-fv">${r[3]||'—'}</div></div><div class="res-f"><div class="res-fl">🚙 Model</div><div class="res-fv">${r[4]||'—'}</div></div><div class="res-f"><div class="res-fl">🧼 Service</div><div class="res-fv">${r[5]||'—'}</div></div>${r[7]?'<div class="res-f"><div class="res-fl">👤 Staff</div><div class="res-fv">'+r[7]+'</div></div>':''}</div>${r[8]?'<div class="res-note"><div class="res-fl">📝 Notes</div><div class="res-fv">'+r[8]+'</div></div>':''}</div>`).join('');
+function updateDots(id, count) {
+  const dots = document.querySelectorAll(`#${id} .pin-dot`);
+  dots.forEach((d, i) => d.classList.toggle('filled', i < count));
 }
 
-/* ════════════════════════════════════
-   ANALYTICS
-════════════════════════════════════ */
-function loadAnalytics(){
-  const rows=cacheAll(),now=new Date(),mo=now.getMonth(),yr=now.getFullYear();
-  let tv=rows.length,tr=0,mv=0,mr=0;const svc={},daily={};
-  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);daily[fmtDate(d)]=0}
-  rows.forEach(r=>{
-    const amt=parseFloat(r[6])||0;tr+=amt;
-    const d=parseDMY(r[0]);
-    if(d&&d.getMonth()===mo&&d.getFullYear()===yr){mv++;mr+=amt}
-    const ds=(r[0]||'').split(' ')[0];if(ds in daily)daily[ds]+=amt;
-    svc[r[5]||'Other']=(svc[r[5]||'Other']||0)+1;
+function completeSetup() {
+  const first = pinBuffer.setup2; // wait, need to track initial
+  // Actually we stored first PIN in setup2's step
+  // We need to re-think: store first in 'setup', confirm in 'setup2'
+  // At confirm step, pinBuffer.setup holds first entered PIN (it was saved before reset)
+  // But we reset pinBuffer.setup when switching... fix:
+  // Let's use a separate firstPin variable
+  document.getElementById('pin-setup-error').textContent = '';
+  if (savedFirstPin !== pinBuffer.setup2) {
+    document.getElementById('pin-setup-error').textContent = 'PINs do not match. Try again.';
+    pinBuffer.setup = ''; pinBuffer.setup2 = '';
+    savedFirstPin = '';
+    pinStep = 'first';
+    document.getElementById('pin-setup-title').textContent = 'Set your PIN';
+    document.getElementById('pin-setup-sub').textContent = 'Choose a 4-digit PIN to protect access';
+    updateDots('pin-setup-dots', 0);
+    return;
+  }
+  LSset('pin_hash', hash(savedFirstPin));
+  savedFirstPin = '';
+  pinBuffer.setup = ''; pinBuffer.setup2 = '';
+  showApp();
+}
+
+let savedFirstPin = '';
+// Patch pinKey for setup first-step to save
+const _origPinKey = pinKey;
+window.pinKey = function(ctx, n) {
+  if (ctx === 'setup' && pinStep === 'first' && pinBuffer.setup.length === 3) {
+    pinBuffer.setup += n;
+    updateDots('pin-setup-dots', 4);
+    setTimeout(() => {
+      savedFirstPin = pinBuffer.setup;
+      pinStep = 'confirm';
+      pinBuffer.setup = '';
+      document.getElementById('pin-setup-title').textContent = 'Confirm PIN';
+      document.getElementById('pin-setup-sub').textContent = 'Enter the same PIN again';
+      updateDots('pin-setup-dots', 0);
+    }, 200);
+    return;
+  }
+  _origPinKey(ctx, n);
+};
+
+function checkPin() {
+  const stored = LS('pin_hash', null);
+  if (hash(pinBuffer.login) === stored) {
+    pinBuffer.login = '';
+    updateDots('pin-login-dots', 0);
+    showApp();
+  } else {
+    document.getElementById('pin-login-error').textContent = 'Wrong PIN. Try again.';
+    pinBuffer.login = '';
+    updateDots('pin-login-dots', 0);
+    // Shake
+    const dots = document.getElementById('pin-login-dots');
+    dots.style.animation = 'none';
+    dots.offsetHeight;
+    dots.style.animation = 'shake 0.4s';
+  }
+}
+
+function forgotPin() {
+  if (confirm('This will sign you out. Your data in Google Sheets is safe. Continue?')) {
+    LSdel('pin_hash');
+    signOut();
+  }
+}
+
+function changePin() {
+  const oldVal = document.getElementById('old-pin').value;
+  const newVal = document.getElementById('new-pin').value;
+  const confVal = document.getElementById('conf-pin').value;
+  const errEl = document.getElementById('modal-pin-error');
+  if (hash(oldVal) !== LS('pin_hash', '')) { errEl.textContent = 'Current PIN is wrong.'; return; }
+  if (newVal.length !== 4) { errEl.textContent = 'New PIN must be 4 digits.'; return; }
+  if (newVal !== confVal) { errEl.textContent = 'New PINs do not match.'; return; }
+  LSset('pin_hash', hash(newVal));
+  errEl.textContent = '';
+  document.getElementById('old-pin').value = '';
+  document.getElementById('new-pin').value = '';
+  document.getElementById('conf-pin').value = '';
+  closeModal('modal-pin');
+  showToast('✅ PIN updated!', 2000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showPinSetup() {
+  const u = userData;
+  document.getElementById('pin-setup-user').innerHTML = `Signed in as <strong>${u.name || ''}</strong> (${u.email || ''})`;
+  pinBuffer = { setup: '', setup2: '', login: '' };
+  savedFirstPin = '';
+  pinStep = 'first';
+  document.getElementById('pin-setup-title').textContent = 'Set your PIN';
+  document.getElementById('pin-setup-sub').textContent = 'Choose a 4-digit PIN to protect access';
+  updateDots('pin-setup-dots', 0);
+  showScreen('screen-pin-setup');
+}
+
+function showPinLogin() {
+  const u = userData;
+  document.getElementById('pin-login-user').innerHTML = `Welcome back, <strong>${u.name || u.email || 'User'}</strong>`;
+  pinBuffer.login = '';
+  updateDots('pin-login-dots', 0);
+  showScreen('screen-pin-login');
+}
+
+function showApp() {
+  document.getElementById('topbar-user').textContent = userData.email || '';
+  document.getElementById('settings-name').textContent = userData.name || '';
+  document.getElementById('settings-email').textContent = userData.email || '';
+  // Load business info
+  const biz = JSON.parse(LS('bizInfo', '{}') || '{}');
+  if (biz.name) document.getElementById('topbar-title').textContent = biz.name;
+  showScreen('screen-app');
+  navTo('home');
+  setSyncStatus(pendingSync.length > 0 ? 'pending' : 'synced');
+  // Sync any pending on load
+  if (pendingSync.length > 0 && accessToken) setTimeout(manualSync, 2000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+  if (page === 'home') refreshHome();
+  if (page === 'analytics') refreshAnalytics();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAVE ENTRY
+// ═══════════════════════════════════════════════════════════
+async function saveEntry() {
+  const name = document.getElementById('f-name').value.trim();
+  const service = document.getElementById('f-service').value;
+  const amount = parseFloat(document.getElementById('f-amount').value);
+
+  if (!name) { showToast('❌ Customer name is required', 2500); return; }
+  if (!service) { showToast('❌ Select a service type', 2500); return; }
+  if (!amount || amount <= 0) { showToast('❌ Enter a valid amount', 2500); return; }
+
+  const now = new Date();
+  const entry = {
+    id: Date.now().toString(),
+    date: now.toLocaleDateString('en-IN'),
+    time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    name,
+    phone: document.getElementById('f-phone').value.trim(),
+    vehicle: document.getElementById('f-vehicle').value.trim().toUpperCase(),
+    model: document.getElementById('f-model').value.trim(),
+    service,
+    amount,
+    staff: document.getElementById('f-staff').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    synced: false
+  };
+
+  entries.unshift(entry);
+  LSset('entries', JSON.stringify(entries));
+
+  // Clear form
+  ['f-name','f-phone','f-vehicle','f-model','f-amount','f-staff','f-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
   });
-  document.getElementById('a-tv').textContent=tv||'0';
-  document.getElementById('a-tr').textContent=fmtRs(tr);
-  document.getElementById('a-mv').textContent=mv||'0';
-  document.getElementById('a-mr').textContent=fmtRs(mr);
-  document.getElementById('a-avg').textContent=tv?fmtRs(Math.round(tr/tv)):'—';
-  const se=document.getElementById('svc-chart');
-  const sv=Object.entries(svc).sort((a,b)=>b[1]-a[1]);const mxs=sv[0]?sv[0][1]:1;
-  se.innerHTML=sv.length?sv.map(([s,n])=>`<div class="bar-row"><div class="bar-lbl" title="${s}">${s.length>13?s.slice(0,13)+'…':s}</div><div class="bar-track"><div class="bar-fill" style="width:${(n/mxs*100).toFixed(1)}%"></div></div><div class="bar-val">${n}</div></div>`).join(''):'<p style="color:var(--text2);font-size:13px">No data yet</p>';
-  const de=document.getElementById('day-chart');
-  const dv=Object.entries(daily);const mxd=Math.max(...dv.map(e=>e[1]),1);
-  de.innerHTML=dv.map(([d,v])=>{const p=d.split('/');return`<div class="bar-row"><div class="bar-lbl">${p[0]}/${p[1]}</div><div class="bar-track"><div class="bar-fill" style="width:${(v/mxd*100).toFixed(1)}%"></div></div><div class="bar-val">${fmtRs(v)}</div></div>`}).join('');
+  document.getElementById('f-service').value = '';
+
+  showToast('✅ Entry saved!', 2000);
+
+  // Sync to sheet
+  const ok = await syncToSheet(entry);
+  if (ok) {
+    entry.synced = true;
+    LSset('entries', JSON.stringify(entries));
+    setSyncStatus('synced');
+  }
+
+  navTo('home');
 }
 
-/* ════════════════════════════════════
-   SETTINGS
-════════════════════════════════════ */
-function fillSettings(){
-  const cfg=LS.g('cfg')||{};
-  document.getElementById('set-biz').value=cfg.biz||'';
-  document.getElementById('set-name').value=cfg.name||'';
-  document.getElementById('set-url').value=LS.g('script_url')||'';
-  const initials=(cfg.name||cfg.email||'?')[0].toUpperCase();
-  document.getElementById('sett-av').textContent=initials;
-  document.getElementById('sett-name').textContent=cfg.name||cfg.email||'—';
-  document.getElementById('sett-email').textContent=cfg.email||'—';
+// ═══════════════════════════════════════════════════════════
+// HOME REFRESH
+// ═══════════════════════════════════════════════════════════
+function fmt(n) { return '₹' + n.toLocaleString('en-IN'); }
+
+function refreshHome() {
+  const today = new Date().toLocaleDateString('en-IN');
+  const todayE = entries.filter(e => e.date === today);
+  const todayRev = todayE.reduce((s, e) => s + (e.amount || 0), 0);
+  const totalRev = entries.reduce((s, e) => s + (e.amount || 0), 0);
+
+  document.getElementById('kpi-today-vehicles').textContent = todayE.length;
+  document.getElementById('kpi-today-revenue').textContent = fmt(todayRev);
+  document.getElementById('kpi-total-vehicles').textContent = entries.length;
+  document.getElementById('kpi-total-revenue').textContent = fmt(totalRev);
+
+  // Top service
+  const svcCount = {};
+  entries.forEach(e => { if (e.service) svcCount[e.service] = (svcCount[e.service] || 0) + 1; });
+  const topSvc = Object.entries(svcCount).sort((a,b) => b[1]-a[1])[0];
+  document.getElementById('kpi-top-service').textContent = topSvc ? `${topSvc[0]} (${topSvc[1]}×)` : '—';
+
+  // Recent entries
+  const list = document.getElementById('recent-list');
+  if (entries.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No entries yet</div><div class="empty-sub">Add your first wash record</div></div>`;
+    return;
+  }
+  list.innerHTML = entries.slice(0, 10).map(e => `
+    <div class="entry-card">
+      <div class="entry-avatar">${svcEmoji(e.service)}</div>
+      <div class="entry-info">
+        <div class="entry-name">${e.name}</div>
+        <div class="entry-meta">${e.service || '—'} · ${e.vehicle || '—'} · ${e.date}</div>
+      </div>
+      <div class="entry-amount">${fmt(e.amount)}</div>
+    </div>
+  `).join('');
 }
-function saveSettings(){
-  const cfg=LS.g('cfg')||{};
-  cfg.biz=document.getElementById('set-biz').value.trim();
-  cfg.name=document.getElementById('set-name').value.trim();
-  LS.s('cfg',cfg);
-  document.getElementById('hero-biz').textContent=cfg.biz||cfg.name||'Car Wash';
-  document.getElementById('um-name').textContent=cfg.name||cfg.email;
-  toast('Settings saved ✅','ok');
+
+function svcEmoji(s) {
+  if (!s) return '🚗';
+  if (s.includes('Foam')) return '🫧';
+  if (s.includes('Polish') || s.includes('Wax')) return '✨';
+  if (s.includes('Vacuum')) return '🌀';
+  if (s.includes('Detail')) return '🔍';
+  if (s.includes('Engine')) return '⚙️';
+  if (s.includes('Pressure')) return '💦';
+  return '🚗';
 }
-function updateURL(){
-  const url=document.getElementById('set-url').value.trim();
-  if(!url||!url.startsWith('https://script.google.com')){toast('Invalid URL','er');return}
-  LS.s('script_url',url);toast('URL updated ✅','ok');
+
+// ═══════════════════════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════════════════════
+function refreshAnalytics() {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+  const monthE = entries.filter(e => {
+    const d = parseDate(e.date);
+    return d && `${d.getFullYear()}-${d.getMonth()}` === monthKey;
+  });
+  const monthRev = monthE.reduce((s, e) => s + (e.amount || 0), 0);
+  const avg = monthE.length ? Math.round(monthRev / monthE.length) : 0;
+
+  document.getElementById('ana-month-vehicles').textContent = monthE.length;
+  document.getElementById('ana-month-revenue').textContent = fmt(monthRev);
+  document.getElementById('ana-avg').textContent = avg ? fmt(avg) : '—';
+
+  // Best day this month
+  const dayMap = {};
+  monthE.forEach(e => { dayMap[e.date] = (dayMap[e.date] || 0) + e.amount; });
+  const bestDay = Object.values(dayMap).sort((a,b) => b-a)[0];
+  document.getElementById('ana-best-day').textContent = bestDay ? fmt(bestDay) : '—';
+
+  // Service chart
+  const svcCount = {};
+  entries.forEach(e => { if (e.service) svcCount[e.service] = (svcCount[e.service] || 0) + 1; });
+  const sorted = Object.entries(svcCount).sort((a,b) => b[1]-a[1]);
+  const maxS = sorted[0]?.[1] || 1;
+  document.getElementById('service-chart').innerHTML = sorted.slice(0,6).map(([s,c]) => `
+    <div class="chart-bar-row">
+      <div class="chart-label">${s.replace(' Wash','').replace(' Cleaning','')}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar" style="width:${(c/maxS*100).toFixed(0)}%"></div></div>
+      <div class="chart-val">${c} washes</div>
+    </div>
+  `).join('') || '<div style="color:var(--muted);font-size:14px;">No data yet</div>';
+
+  // Last 7 days
+  const days7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days7.push({ label: d.toLocaleDateString('en-IN', { weekday: 'short' }), date: d.toLocaleDateString('en-IN') });
+  }
+  const dayRevs = days7.map(d => ({ ...d, rev: entries.filter(e => e.date === d.date).reduce((s, e) => s + e.amount, 0) }));
+  const maxR = Math.max(...dayRevs.map(d => d.rev), 1);
+  document.getElementById('days-chart').innerHTML = dayRevs.map(d => `
+    <div class="chart-bar-row">
+      <div class="chart-label">${d.label}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar" style="width:${(d.rev/maxR*100).toFixed(0)}%;${d.rev===0?'opacity:0.2':''}"></div></div>
+      <div class="chart-val">${d.rev ? fmt(d.rev) : '—'}</div>
+    </div>
+  `).join('');
 }
-function exportCSV(){
-  const rows=cacheAll();if(!rows.length){toast('No data to export','er');return}
-  const hdr=['Date & Time','Customer Name','Phone','Vehicle No.','Vehicle Model','Service Type','Amount (₹)','Staff','Notes'];
-  const lines=[hdr.join(','),...rows.map(r=>r.map(c=>'"'+(String(c||'').replace(/"/g,'""'))+'"').join(','))];
-  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='car-wash-data-'+fmtDate(new Date()).replace(/\//g,'-')+'.csv';a.click();
-  toast('CSV downloaded!','ok');
+
+function parseDate(str) {
+  if (!str) return null;
+  // en-IN format: d/m/yyyy or dd/mm/yyyy
+  const parts = str.split('/');
+  if (parts.length !== 3) return null;
+  return new Date(parts[2], parts[1]-1, parts[0]);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════
+function doSearch(q) {
+  q = q.toLowerCase().trim();
+  const res = document.getElementById('search-results');
+  const countEl = document.getElementById('search-count');
+  if (!q) {
+    countEl.textContent = 'Type to search records';
+    res.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Search your records</div><div class="empty-sub">Find by phone, vehicle no., or name</div></div>`;
+    return;
+  }
+  const matches = entries.filter(e =>
+    (e.phone && e.phone.includes(q)) ||
+    (e.vehicle && e.vehicle.toLowerCase().includes(q)) ||
+    (e.name && e.name.toLowerCase().includes(q))
+  );
+  countEl.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} found`;
+  if (!matches.length) {
+    res.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-sub">Try a different search term</div></div>`;
+    return;
+  }
+  res.innerHTML = matches.map(e => `
+    <div class="entry-card">
+      <div class="entry-avatar">${svcEmoji(e.service)}</div>
+      <div class="entry-info">
+        <div class="entry-name">${e.name}</div>
+        <div class="entry-meta">${e.service || '—'} · ${e.vehicle || '—'} · ${e.date} ${e.time}</div>
+        ${e.phone ? `<div class="entry-meta">📞 ${e.phone}</div>` : ''}
+      </div>
+      <div class="entry-amount">${fmt(e.amount)}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+function saveBiz() {
+  const info = { name: document.getElementById('biz-name').value.trim(), location: document.getElementById('biz-location').value.trim() };
+  LSset('bizInfo', JSON.stringify(info));
+  if (info.name) document.getElementById('topbar-title').textContent = info.name;
+  closeModal('modal-biz');
+  showToast('✅ Business info saved', 2000);
+}
+
+function openModal(id) {
+  if (id === 'modal-biz') {
+    const biz = JSON.parse(LS('bizInfo', '{}') || '{}');
+    document.getElementById('biz-name').value = biz.name || '';
+    document.getElementById('biz-location').value = biz.location || '';
+  }
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function signOut() {
+  if (!confirm('Sign out? Your data in Google Sheets is safe.')) return;
+  ['accessToken','tokenExpiry','pin_hash','userData','sheetId','bizInfo'].forEach(LSdel);
+  accessToken = null; userData = {}; sheetId = null;
+  // Don't clear entries / pendingSync — keep local cache
+  initTokenClient();
+  showScreen('screen-signin');
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════════════════════
+function exportCSV() {
+  const header = ['Date','Time','Name','Phone','Vehicle','Model','Service','Amount','Staff','Notes'];
+  const rows = entries.map(e => [e.date,e.time,e.name,e.phone,e.vehicle,e.model,e.service,e.amount,e.staff,e.notes].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`));
+  const csv = [header, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'car-wash-records.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 CSV downloaded', 2000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, dur = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), dur);
 }
 </script>
-<script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>
 </body>
 </html>
-HTMLEOF
-echo "done: $(wc -l < /mnt/user-data/outputs/car-wash-app/index.html) lines"

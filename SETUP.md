@@ -1,159 +1,111 @@
-# Car Wash Manager — Complete Setup Guide
+# Car Wash Manager — Setup Guide
 
-## What You Need (Free)
-- A GitHub account (free) → to host the app
-- A Google account → each client uses their own
-
----
-
-## PART 1 — Deploy the App (5 minutes)
-
-### Step 1: Create GitHub Repository
-1. Go to **github.com** → sign in → click **+** → **New repository**
-2. Name: `car-wash-app` | Visibility: **Public** | Click **Create**
-
-### Step 2: Upload Files
-On the new repo page, click **"uploading an existing file"** and upload:
-- `index.html`
-- `manifest.json`  
-- `sw.js`
-
-Then click **Commit changes**.
-
-### Step 3: Enable GitHub Pages
-1. Go to repo **Settings** → **Pages**
-2. Source: **Deploy from a branch** → Branch: **main** → `/root`
-3. Click **Save**
-
-✅ App is now live at:
-```
-https://YOUR_GITHUB_USERNAME.github.io/car-wash-app
-```
-(Wait 2–3 minutes for first deployment)
+## What changed in this version
+- ✅ **Client ID is hardcoded in index.html** — clients never see any setup screen
+- ✅ **Sheet name is always "Car Wash Records"** in every client's Google Drive
+- ✅ **Sheet sync fixed** — uses correct Sheets API v4 endpoint
+- ✅ **One-time setup** — you do this once, all clients just sign in with Google
 
 ---
 
-## PART 2 — Google Cloud Setup (10 minutes, one-time)
+## Step 1 — Google Cloud Setup (you do this once)
 
-This is needed so the app can create Google Sheets.  
-You only do this ONCE. All your clients use the same Client ID.
+### 1a. Create a Google Cloud Project
+1. Go to https://console.cloud.google.com
+2. Click **New Project** → name it "Car Wash App" → Create
 
-### Step 1: Create Project
-1. Go to **console.cloud.google.com**
-2. Click **Select a project** → **New Project**
-3. Name: `Car Wash Manager` → **Create**
-
-### Step 2: Enable APIs
+### 1b. Enable APIs
 1. Go to **APIs & Services → Library**
-2. Search for **Google Sheets API** → Enable
-3. Search for **Google Drive API** → Enable
+2. Search & enable: **Google Sheets API**
+3. Search & enable: **Google Drive API**
 
-### Step 3: Configure OAuth Consent Screen
+### 1c. Configure OAuth Consent Screen
 1. Go to **APIs & Services → OAuth consent screen**
-2. User type: **External** → **Create**
+2. User Type: **External** → Create
 3. App name: `Car Wash Manager`
-4. User support email: your Gmail
-5. Developer contact: your Gmail
+4. User support email: your email
+5. Developer contact: your email
 6. Click **Save and Continue** through all steps
-7. Back on consent screen page → Click **Publish App** → **Confirm**
+7. On **Test users** — add the emails of your clients (up to 100 while unverified)
+8. Submit
 
-### Step 4: Create OAuth Client ID
+> **Note:** While your app is in "Testing" mode, only users you add as Test Users can sign in.
+> For production (unlimited users), submit for Google verification — takes ~2 weeks.
+> For <100 clients, just add them as test users and skip verification.
+
+### 1d. Create OAuth Client ID
 1. Go to **APIs & Services → Credentials**
-2. Click **+ Create Credentials → OAuth client ID**
+2. Click **Create Credentials → OAuth client ID**
 3. Application type: **Web application**
-4. Name: `Car Wash Manager`
-5. Under **Authorized JavaScript origins**, click **+ Add URI** and add:
-   ```
-   https://YOUR_GITHUB_USERNAME.github.io
-   ```
+4. Name: `Car Wash Web`
+5. Under **Authorized JavaScript origins**, add:
+   - `https://YOUR_USERNAME.github.io`
+   - `http://localhost` (for local testing)
 6. Click **Create**
-7. A popup shows your **Client ID** — copy it (looks like `123456789-abcdef.apps.googleusercontent.com`)
+7. **Copy the Client ID** — looks like `123456789.apps.googleusercontent.com`
 
 ---
 
-## PART 3 — First Open on Phone
+## Step 2 — Add Your Client ID to the Code
 
-1. Open Chrome → go to `https://YOUR_USERNAME.github.io/car-wash-app`
-2. The app shows a **"One-time Setup"** screen
-3. Paste your **Client ID** → tap **Save & Continue**
-4. Tap **Sign in with Google** → choose their Gmail account
-5. ✅ The app automatically creates **"Car Wash Data"** sheet in their Drive
-6. Set a PIN for quick access
+Open `index.html` and find this line near the top:
 
-### Install on Home Screen
-**Android (Chrome):** Tap ⋮ menu → **Add to Home Screen** → Add  
-**iPhone (Safari):** Tap Share → **Add to Home Screen**
-
----
-
-## HOW MULTIPLE CLIENTS WORK
-
-Each client:
-1. Opens the same URL
-2. Signs in with **their own Google account**
-3. Gets **their own "Car Wash Data" sheet** created in **their own Drive**
-4. Their data is completely separate from other clients
-
-```
-Client A (Gmail: a@gmail.com) → "Car Wash Data" in A's Drive
-Client B (Gmail: b@gmail.com) → "Car Wash Data" in B's Drive
-Client C (Gmail: c@gmail.com) → "Car Wash Data" in C's Drive
+```javascript
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
 ```
 
-Nobody can see anyone else's data. You only set up the Client ID once.
+Replace `YOUR_CLIENT_ID_HERE.apps.googleusercontent.com` with your actual Client ID.
+
+That's the only code change needed. Clients will never see or enter this.
 
 ---
 
-## DATA SHEET FORMAT
+## Step 3 — Deploy to GitHub Pages
 
-Sheet name: **"Car Wash Data"**
-
-| Column | Content |
-|--------|---------|
-| A | Date & Time |
-| B | Customer Name |
-| C | Phone |
-| D | Vehicle No. |
-| E | Vehicle Model |
-| F | Service Type |
-| G | Amount (₹) |
-| H | Staff |
-| I | Notes |
+1. Create a new GitHub repository (e.g. `car-wash-app`)
+2. Upload `index.html`, `sw.js`, `manifest.json`
+3. Go to **Settings → Pages**
+4. Source: **Deploy from a branch** → Branch: `main` → `/root`
+5. Save. Your app is live at `https://YOUR_USERNAME.github.io/car-wash-app`
 
 ---
 
-## TROUBLESHOOTING
+## Step 4 — Share with Clients
 
-**"Error: not_allowed_js_origin"**  
-→ Your site URL is not in the Authorized JavaScript Origins.  
-→ Go to Google Cloud → Credentials → edit your Client ID → add the URL.
+Send each client this link: `https://YOUR_USERNAME.github.io/car-wash-app`
 
-**"Exception: You do not have permission"**  
-→ This was the old Apps Script error. This version does NOT use Apps Script.  
-→ Just sign in with Google — the sheet is created in your own Drive automatically.
+**First time for each client:**
+1. Open the link in Chrome
+2. Tap **Sign in with Google** → choose their Gmail account
+3. Grant permissions (Sheets + Drive)
+4. Set a 4-digit PIN
+5. Done! Their data goes into their own Google Drive in a sheet called **"Car Wash Records"**
 
-**"Sign in with Google" button does nothing**  
-→ Wait 5 seconds for the Google script to load, then try again.  
-→ Check that you entered the Client ID correctly.
-
-**Session expired / needs to sign in again**  
-→ Google tokens expire after ~1 hour. The app auto-refreshes silently.  
-→ If it fails, tap "Switch account / Sign in again" on the PIN screen.
-
-**Want to change Google account**  
-→ Settings → Sign Out & Switch Account
+**Install on phone (optional):**
+- Android: Chrome will show "Add to Home Screen" banner
+- iOS: Safari → Share → Add to Home Screen
 
 ---
 
-## APP FEATURES
+## How Data Works
 
-- ✅ Google Sign In — each client uses their own account
-- ✅ Auto-creates **"Car Wash Data"** sheet in Google Drive  
-- ✅ Saves every entry to Google Sheets in real-time
-- ✅ Local cache — app works even if internet is slow
-- ✅ PIN lock for quick re-open by staff
-- ✅ 5 KPI cards on home screen
-- ✅ Analytics: service breakdown + 7-day revenue chart
-- ✅ Search by phone number or vehicle number
-- ✅ Export to CSV
-- ✅ Installable as PWA (works like a native app)
+| What | Where |
+|------|-------|
+| Records | Client's Google Drive → "Car Wash Records" spreadsheet |
+| Offline cache | Phone's local storage (instant, no internet needed) |
+| Sync | Automatic when online; manual sync button available |
+
+Each client's data is **completely separate** — nobody can see anyone else's data.
+
+---
+
+## Troubleshooting
+
+**"Google hasn't verified this app" warning:**
+→ Click "Advanced" → "Go to Car Wash Manager (unsafe)" — this appears because the app isn't verified yet. Add the client as a Test User in Google Cloud Console to avoid this.
+
+**Sheet not syncing:**
+→ Tap the 🔄 button in the top-right, or go to Settings → Force Sync
+
+**Signed out unexpectedly:**
+→ Google tokens expire after ~1 hour. Sign in again — data is safe in the sheet.
