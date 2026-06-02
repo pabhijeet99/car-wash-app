@@ -15,7 +15,7 @@
      Authorized JS origins must include your GitHub Pages URL.
      ═══════════════════════════════════════════════════════════ -->
 <script>
-  const GOOGLE_CLIENT_ID = '1044032107946-lv2e6g33226uolkevlfsoo7v5ihq1irf.apps.googleusercontent.com';
+  const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
   const SHEET_NAME = 'Car Wash Records';
 </script>
 
@@ -974,17 +974,21 @@ async function manualSync() {
     showToast('Creating sheet…', 2000);
     await ensureSheet();
   }
-  if (pendingSync.length === 0) { showToast('✅ Already synced', 2000); return; }
-  showToast(`Syncing ${pendingSync.length} records…`, 2000);
-  const failed = [];
-  for (const e of pendingSync) {
-    const ok = await syncToSheet(e);
-    if (!ok) failed.push(e);
+  // First upload any pending local entries
+  if (pendingSync.length > 0) {
+    showToast(`Syncing ${pendingSync.length} records…`, 2000);
+    const failed = [];
+    for (const e of pendingSync) {
+      const ok = await syncToSheet(e);
+      if (!ok) failed.push(e);
+    }
+    pendingSync = failed;
+    LSset('pendingSync', JSON.stringify(pendingSync));
+    if (failed.length === 0) setSyncStatus('synced');
+    else { showToast(`⚠️ ${failed.length} records still pending`, 3000); return; }
   }
-  pendingSync = failed;
-  LSset('pendingSync', JSON.stringify(pendingSync));
-  if (failed.length === 0) { setSyncStatus('synced'); showToast('✅ All synced!', 2500); }
-  else showToast(`⚠️ ${failed.length} records still pending`, 3000);
+  // Then reload everything from sheet
+  await loadFromSheet();
 }
 
 function setSyncStatus(status) {
@@ -1198,8 +1202,92 @@ function showApp() {
   showScreen('screen-app');
   navTo('home');
   setSyncStatus(pendingSync.length > 0 ? 'pending' : 'synced');
-  // Sync any pending on load
-  if (pendingSync.length > 0 && accessToken) setTimeout(manualSync, 2000);
+  // Always load fresh data from sheet (fixes mobile/desktop sync)
+  if (accessToken && sheetId) {
+    loadFromSheet();
+  } else if (pendingSync.length > 0 && accessToken) {
+    setTimeout(manualSync, 2000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOAD DATA FROM GOOGLE SHEET — syncs all devices
+// ═══════════════════════════════════════════════════════════
+async function loadFromSheet() {
+  if (!accessToken || !sheetId) return;
+  setSyncStatus('pending');
+  showToast('☁️ Loading data from Google Sheets…', 2000);
+  try {
+    const range = encodeURIComponent('Records!A2:J');
+    const r = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!r.ok) {
+      if (r.status === 401) { accessToken = null; setSyncStatus('error'); return; }
+      setSyncStatus('error');
+      return;
+    }
+    const data = await r.json();
+    const rows = data.values || [];
+    if (rows.length === 0) {
+      setSyncStatus('synced');
+      // Still push any local pending entries
+      if (pendingSync.length > 0) manualSync();
+      return;
+    }
+
+    // Convert sheet rows → entry objects
+    // Columns: Date, Time, Name, Phone, Vehicle, Model, Service, Amount, Staff, Notes
+    const sheetEntries = rows
+      .filter(row => row.length >= 7 && row[2]) // must have a name
+      .map((row, i) => ({
+        id: `sheet-${i}-${row[0]}-${row[2]}`,
+        date:    row[0] || '',
+        time:    row[1] || '',
+        name:    row[2] || '',
+        phone:   row[3] || '',
+        vehicle: row[4] || '',
+        model:   row[5] || '',
+        service: row[6] || '',
+        amount:  parseFloat(row[7]) || 0,
+        staff:   row[8] || '',
+        notes:   row[9] || '',
+        synced:  true
+      }));
+
+    // Merge: sheet is the source of truth.
+    // Keep any local-only entries that haven't synced yet (pendingSync).
+    const pendingIds = new Set(pendingSync.map(e => e.id));
+    const localOnly = entries.filter(e => pendingIds.has(e.id));
+
+    // Deduplicate by date+name+vehicle+amount
+    const key = e => `${e.date}|${e.name}|${e.vehicle}|${e.amount}`;
+    const sheetKeys = new Set(sheetEntries.map(key));
+    const uniqueLocal = localOnly.filter(e => !sheetKeys.has(key(e)));
+
+    entries = [...sheetEntries, ...uniqueLocal]
+      .sort((a, b) => {
+        // Sort newest first by parsing date
+        const da = parseDate(a.date), db = parseDate(b.date);
+        if (da && db) return db - da;
+        return 0;
+      });
+
+    LSset('entries', JSON.stringify(entries));
+    setSyncStatus('synced');
+    refreshHome();
+    showToast(`✅ Loaded ${sheetEntries.length} records`, 2500);
+
+    // Push any local-only pending entries to sheet
+    if (uniqueLocal.length > 0) {
+      showToast(`Uploading ${uniqueLocal.length} local records…`, 2000);
+      setTimeout(manualSync, 1000);
+    }
+  } catch (e) {
+    setSyncStatus('error');
+    showToast('Could not load from sheet: ' + e.message, 3000);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
