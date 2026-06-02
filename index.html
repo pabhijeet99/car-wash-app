@@ -940,23 +940,32 @@ async function ensureSheet() {
 // ═══════════════════════════════════════════════════════════
 // SYNC — append rows to sheet
 // ═══════════════════════════════════════════════════════════
-async function syncToSheet(entryObj) {
+async function syncToSheet(entryObj, tabName) {
   if (!accessToken || !sheetId) { queueSync(entryObj); return false; }
+  tabName = tabName || 'Records';
   const row = [
     entryObj.date, entryObj.time, entryObj.name, entryObj.phone,
     entryObj.vehicle, entryObj.model, entryObj.service,
     entryObj.amount, entryObj.staff, entryObj.notes
   ];
   try {
-    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Records!A:J:append?valueInputOption=USER_ENTERED`, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: [row] })
-    });
-    if (r.status === 401) { accessToken = null; queueSync(entryObj); return false; }
-    if (!r.ok) { queueSync(entryObj); return false; }
+    const range = encodeURIComponent(`${tabName}!A1`);
+    const r = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [row] })
+      }
+    );
+    if (r.status === 401) { accessToken = null; LSdel('accessToken'); queueSync(entryObj); return false; }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      console.error('Append error:', r.status, err);
+      queueSync(entryObj); return false;
+    }
     return true;
-  } catch { queueSync(entryObj); return false; }
+  } catch (e) { console.error('syncToSheet:', e); queueSync(entryObj); return false; }
 }
 
 function queueSync(entry) {
@@ -971,23 +980,10 @@ async function manualSync() {
     return;
   }
   if (!sheetId) {
-    showToast('Creating sheet…', 2000);
+    showToast('Finding your sheet…', 2000);
     await ensureSheet();
+    if (!sheetId) { showToast('❌ Could not find sheet', 3000); return; }
   }
-  // First upload any pending local entries
-  if (pendingSync.length > 0) {
-    showToast(`Syncing ${pendingSync.length} records…`, 2000);
-    const failed = [];
-    for (const e of pendingSync) {
-      const ok = await syncToSheet(e);
-      if (!ok) failed.push(e);
-    }
-    pendingSync = failed;
-    LSset('pendingSync', JSON.stringify(pendingSync));
-    if (failed.length === 0) setSyncStatus('synced');
-    else { showToast(`⚠️ ${failed.length} records still pending`, 3000); return; }
-  }
-  // Then reload everything from sheet
   await loadFromSheet();
 }
 
@@ -1218,31 +1214,50 @@ async function loadFromSheet() {
   setSyncStatus('pending');
   showToast('☁️ Loading data from Google Sheets…', 2000);
   try {
-    const range = encodeURIComponent('Records!A2:J');
-    const r = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`,
-      { headers: { Authorization: 'Bearer ' + accessToken } }
-    );
+    // First get the actual sheet tab name (it might not be "Records")
+    let tabName = 'Records';
+    try {
+      const metaR = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      if (metaR.ok) {
+        const meta = await metaR.json();
+        if (meta.sheets && meta.sheets.length > 0) {
+          tabName = meta.sheets[0].properties.title;
+        }
+      }
+    } catch {}
+
+    const range = `${tabName}!A2:J`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+
     if (!r.ok) {
-      if (r.status === 401) { accessToken = null; setSyncStatus('error'); return; }
+      const errBody = await r.json().catch(() => ({}));
+      console.error('Sheet read error:', r.status, errBody);
+      if (r.status === 401) { accessToken = null; LSdel('accessToken'); }
       setSyncStatus('error');
+      showToast(`❌ Sheet read failed (${r.status}). Tap 🔄 to retry.`, 4000);
       return;
     }
+
     const data = await r.json();
     const rows = data.values || [];
+
     if (rows.length === 0) {
       setSyncStatus('synced');
-      // Still push any local pending entries
-      if (pendingSync.length > 0) manualSync();
+      showToast('✅ Sheet is empty — add your first entry!', 2500);
+      if (pendingSync.length > 0) setTimeout(() => uploadPending(tabName), 500);
       return;
     }
 
     // Convert sheet rows → entry objects
     // Columns: Date, Time, Name, Phone, Vehicle, Model, Service, Amount, Staff, Notes
     const sheetEntries = rows
-      .filter(row => row.length >= 7 && row[2]) // must have a name
+      .filter(row => row && row.length >= 3 && row[2]) // must have at least name
       .map((row, i) => ({
-        id: `sheet-${i}-${row[0]}-${row[2]}`,
+        id: `sheet-${i}-${(row[0]||'').replace(/\//g,'')}${(row[2]||'').replace(/\s/g,'')}`,
         date:    row[0] || '',
         time:    row[1] || '',
         name:    row[2] || '',
@@ -1250,44 +1265,53 @@ async function loadFromSheet() {
         vehicle: row[4] || '',
         model:   row[5] || '',
         service: row[6] || '',
-        amount:  parseFloat(row[7]) || 0,
+        amount:  parseFloat((row[7]||'').toString().replace(/[^\d.]/g,'')) || 0,
         staff:   row[8] || '',
         notes:   row[9] || '',
         synced:  true
       }));
 
-    // Merge: sheet is the source of truth.
-    // Keep any local-only entries that haven't synced yet (pendingSync).
+    // Merge: sheet is source of truth + keep unsynced local entries
     const pendingIds = new Set(pendingSync.map(e => e.id));
     const localOnly = entries.filter(e => pendingIds.has(e.id));
-
-    // Deduplicate by date+name+vehicle+amount
     const key = e => `${e.date}|${e.name}|${e.vehicle}|${e.amount}`;
     const sheetKeys = new Set(sheetEntries.map(key));
     const uniqueLocal = localOnly.filter(e => !sheetKeys.has(key(e)));
 
-    entries = [...sheetEntries, ...uniqueLocal]
-      .sort((a, b) => {
-        // Sort newest first by parsing date
-        const da = parseDate(a.date), db = parseDate(b.date);
-        if (da && db) return db - da;
-        return 0;
-      });
+    entries = [...sheetEntries, ...uniqueLocal].sort((a, b) => {
+      const da = parseDate(a.date), db = parseDate(b.date);
+      return (da && db) ? db - da : 0;
+    });
 
     LSset('entries', JSON.stringify(entries));
     setSyncStatus('synced');
     refreshHome();
-    showToast(`✅ Loaded ${sheetEntries.length} records`, 2500);
+    showToast(`✅ Loaded ${sheetEntries.length} record${sheetEntries.length !== 1 ? 's' : ''}`, 2500);
 
-    // Push any local-only pending entries to sheet
     if (uniqueLocal.length > 0) {
-      showToast(`Uploading ${uniqueLocal.length} local records…`, 2000);
-      setTimeout(manualSync, 1000);
+      showToast(`Uploading ${uniqueLocal.length} local record(s)…`, 2000);
+      setTimeout(() => uploadPending(tabName), 1000);
     }
   } catch (e) {
+    console.error('loadFromSheet error:', e);
     setSyncStatus('error');
-    showToast('Could not load from sheet: ' + e.message, 3000);
+    showToast('❌ Sync error: ' + e.message, 4000);
   }
+}
+
+// Upload pendingSync entries to sheet
+async function uploadPending(tabName) {
+  tabName = tabName || 'Records';
+  if (pendingSync.length === 0) return;
+  const failed = [];
+  for (const e of pendingSync) {
+    const ok = await syncToSheet(e, tabName);
+    if (!ok) failed.push(e);
+  }
+  pendingSync = failed;
+  LSset('pendingSync', JSON.stringify(pendingSync));
+  if (failed.length === 0) { setSyncStatus('synced'); showToast('✅ All synced!', 2000); }
+  else showToast(`⚠️ ${failed.length} records still pending`, 3000);
 }
 
 // ═══════════════════════════════════════════════════════════
